@@ -1,0 +1,10 @@
+# Python
+backend/.venv/
+__pycache__/
+*.py[cod]
+*.db
+
+# Environment files
+.env
+.env.*
+!.env.example
