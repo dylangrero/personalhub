@@ -1,7 +1,11 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from collections.abc import Generator
+from pathlib import Path
 
-DATABASE_URL = "sqlite:///./personal_hub.db"
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+
+DATABASE_PATH = Path(__file__).resolve().parents[1] / "personal_hub.db"
+DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
 
 engine = create_engine(
     DATABASE_URL,
@@ -12,3 +16,17 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class Base(DeclarativeBase):
     pass
+
+
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def init_database() -> None:
+    import app.models  # noqa: F401
+
+    Base.metadata.create_all(bind=engine)
