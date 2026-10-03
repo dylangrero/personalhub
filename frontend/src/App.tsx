@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 
-import { mockProjects } from './data/mockProjects'
+import { fetchProjects } from './services/projects'
 import { fetchTasks, updateTask } from './services/tasks'
+import type { Project } from './types/project'
 import type { Task } from './types/task'
 
 type ScheduleItem = {
@@ -231,11 +232,62 @@ function PriorityTasks() {
 }
 
 function ActiveProjects() {
+  const [projects, setProjects] = useState<Project[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isCurrent = true
+
+    fetchProjects()
+      .then((loadedProjects) => {
+        if (isCurrent) {
+          setProjects(loadedProjects)
+          setError(null)
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setError('Projects are unavailable. Check that the backend is running.')
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsLoading(false)
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
+
+  const activeProjectCount = projects.filter((project) => project.status !== 'Completed').length
+
   return (
     <section className="border-t border-white/10 pt-6">
-      <SectionHeading eyebrow="Momentum" title="Active projects" meta="3 in motion" />
+      <SectionHeading
+        eyebrow="Momentum"
+        title="Active projects"
+        meta={isLoading ? 'Loading' : `${activeProjectCount} in motion`}
+      />
       <div className="mt-5 grid gap-px overflow-hidden border border-white/10 bg-white/10 md:grid-cols-3">
-        {mockProjects.map((project) => (
+        {isLoading && (
+          <p className="bg-[#0d0f12] p-5 text-sm text-zinc-500 sm:p-6 md:col-span-3">
+            Loading projects…
+          </p>
+        )}
+        {!isLoading && error && (
+          <p className="bg-[#0d0f12] p-5 text-sm text-rose-300 sm:p-6 md:col-span-3">
+            {error}
+          </p>
+        )}
+        {!isLoading && !error && projects.length === 0 && (
+          <p className="bg-[#0d0f12] p-5 text-sm text-zinc-500 sm:p-6 md:col-span-3">
+            No active projects yet.
+          </p>
+        )}
+        {!isLoading && !error && projects.map((project) => (
           <article key={project.id} className="bg-[#0d0f12] p-5 sm:p-6">
             <div className="flex items-start justify-between gap-3">
               <div>

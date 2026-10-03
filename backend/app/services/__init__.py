@@ -1,3 +1,3 @@
-from app.services import task_service
+from app.services import project_service, task_service
 
-__all__ = ["task_service"]
+__all__ = ["project_service", "task_service"]
