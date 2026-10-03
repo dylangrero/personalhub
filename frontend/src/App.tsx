@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react'
+
 import { mockProjects } from './data/mockProjects'
-import { mockTasks } from './data/mockTasks'
+import { fetchTasks, updateTask } from './services/tasks'
+import type { Task } from './types/task'
 
 type ScheduleItem = {
   time: string
@@ -113,24 +116,102 @@ function Schedule() {
 }
 
 function PriorityTasks() {
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [updatingTaskId, setUpdatingTaskId] = useState<number | null>(null)
+
+  useEffect(() => {
+    let isCurrent = true
+
+    fetchTasks()
+      .then((loadedTasks) => {
+        if (isCurrent) {
+          setTasks(loadedTasks)
+          setError(null)
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setError('Tasks are unavailable. Check that the backend is running.')
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsLoading(false)
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
+
+  const remainingTaskCount = tasks.filter((task) => task.status !== 'Done').length
+
+  async function toggleTaskStatus(task: Task) {
+    setUpdatingTaskId(task.id)
+    setError(null)
+
+    try {
+      const updatedTask = await updateTask(task.id, {
+        status: task.status === 'Done' ? 'To do' : 'Done',
+      })
+
+      setTasks((currentTasks) =>
+        currentTasks.map((currentTask) =>
+          currentTask.id === updatedTask.id ? updatedTask : currentTask,
+        ),
+      )
+    } catch {
+      setError('The task could not be updated. Please try again.')
+    } finally {
+      setUpdatingTaskId(null)
+    }
+  }
+
   return (
     <section className="border border-white/10 bg-white/[0.025] p-5 sm:p-6 lg:p-7">
-      <SectionHeading eyebrow="Focus" title="Priority tasks" meta="4 remaining" />
+      <SectionHeading
+        eyebrow="Focus"
+        title="Priority tasks"
+        meta={isLoading ? 'Loading' : `${remainingTaskCount} remaining`}
+      />
       <div className="mt-2">
-        {mockTasks.map((task, index) => (
+        {isLoading && (
+          <p className="py-5 text-sm text-zinc-500">Loading tasks…</p>
+        )}
+        {!isLoading && error && tasks.length === 0 && (
+          <p className="py-5 text-sm leading-6 text-rose-300">{error}</p>
+        )}
+        {!isLoading && !error && tasks.length === 0 && (
+          <p className="py-5 text-sm text-zinc-500">No priority tasks yet.</p>
+        )}
+        {error && tasks.length > 0 && (
+          <p className="border-b border-white/[0.07] py-3 text-xs text-rose-300">{error}</p>
+        )}
+        {tasks.map((task, index) => (
           <article
             key={task.id}
             className="group flex items-start gap-4 border-b border-white/[0.07] py-4 last:border-b-0"
           >
             <button
               type="button"
-              aria-label={`Mark ${task.title} complete`}
-              className="mt-0.5 grid h-5 w-5 shrink-0 cursor-pointer place-items-center border border-zinc-600 transition-colors hover:border-amber-300"
+              aria-label={`Mark ${task.title} ${task.status === 'Done' ? 'to do' : 'complete'}`}
+              disabled={updatingTaskId === task.id}
+              onClick={() => void toggleTaskStatus(task)}
+              className="mt-0.5 grid h-5 w-5 shrink-0 cursor-pointer place-items-center border border-zinc-600 transition-colors hover:border-amber-300 disabled:cursor-wait disabled:opacity-50"
             >
-              <span className="h-1.5 w-1.5 bg-transparent transition-colors group-hover:bg-amber-300" />
+              <span
+                className={`h-1.5 w-1.5 transition-colors group-hover:bg-amber-300 ${task.status === 'Done' ? 'bg-amber-300' : 'bg-transparent'}`}
+              />
             </button>
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-medium text-zinc-200">{task.title}</h3>
+              <h3
+                className={`text-sm font-medium ${task.status === 'Done' ? 'text-zinc-500 line-through' : 'text-zinc-200'}`}
+              >
+                {task.title}
+              </h3>
               <p className="mt-1 text-xs text-zinc-500">{task.category}</p>
             </div>
             <div className="flex items-center gap-2 pt-1">
