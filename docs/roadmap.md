@@ -10,6 +10,8 @@
   - [x] Event management UI
   - [ ] Full calendar and date navigation
 - [ ] Today view
+  - [x] Deterministic backend aggregation (no AI)
+  - [ ] Dashboard Today integration
 - [x] Connect dashboard to real data
 - [ ] V1 polish
 
