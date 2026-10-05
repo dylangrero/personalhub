@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { EventForm, type EventFormValues } from './components/EventForm'
 import { ProjectForm, type ProjectFormValues } from './components/ProjectForm'
 import { TaskForm, type TaskFormValues } from './components/TaskForm'
-import { createEvent, deleteEvent, fetchEvents, updateEvent } from './services/events'
-import { createProject, deleteProject, fetchProjects, updateProject } from './services/projects'
-import { createTask, deleteTask, fetchTasks, updateTask } from './services/tasks'
+import { createEvent, deleteEvent, updateEvent } from './services/events'
+import { createProject, deleteProject, updateProject } from './services/projects'
+import { createTask, deleteTask, updateTask } from './services/tasks'
+import { fetchToday } from './services/today'
 import type { Event as CalendarEvent } from './types/event'
 import type { Project } from './types/project'
 import type { Task } from './types/task'
+import type { Today } from './types/today'
 
 const scheduleAccentClasses = ['bg-amber-300', 'bg-sky-300', 'bg-emerald-300']
 
@@ -53,17 +55,6 @@ function SectionHeading({
   )
 }
 
-function occursToday(startTime: string, today: Date) {
-  const eventDate = new Date(startTime)
-
-  return (
-    !Number.isNaN(eventDate.getTime()) &&
-    eventDate.getFullYear() === today.getFullYear() &&
-    eventDate.getMonth() === today.getMonth() &&
-    eventDate.getDate() === today.getDate()
-  )
-}
-
 function formatEventTime(dateTime: string) {
   return new Intl.DateTimeFormat('en-GB', {
     hour: '2-digit',
@@ -105,71 +96,48 @@ function formatDuration(minutes: number) {
   return `${hours}h ${remainingMinutes}m`
 }
 
-function Schedule() {
-  const [events, setEvents] = useState<CalendarEvent[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+type RefreshToday = () => Promise<boolean>
+
+type ScheduleProps = {
+  events: CalendarEvent[]
+  todayDate: string
+  isLoading: boolean
+  loadError: string | null
+  refreshToday: RefreshToday
+}
+
+function Schedule({ events, todayDate, isLoading, loadError, refreshToday }: ScheduleProps) {
   const [error, setError] = useState<string | null>(null)
   const [editingEventId, setEditingEventId] = useState<number | null>(null)
   const [confirmingDeleteEventId, setConfirmingDeleteEventId] = useState<number | null>(null)
   const [deletingEventId, setDeletingEventId] = useState<number | null>(null)
   const [isAddingEvent, setIsAddingEvent] = useState(false)
 
-  useEffect(() => {
-    let isCurrent = true
-
-    fetchEvents()
-      .then((loadedEvents) => {
-        if (isCurrent) {
-          setEvents(loadedEvents)
-          setError(null)
-        }
-      })
-      .catch(() => {
-        if (isCurrent) {
-          setError('Schedule is unavailable. Check that the backend is running.')
-        }
-      })
-      .finally(() => {
-        if (isCurrent) {
-          setIsLoading(false)
-        }
-      })
-
-    return () => {
-      isCurrent = false
-    }
-  }, [])
-
-  const today = new Date()
-  const todaysEvents = events
-    .filter((event) => occursToday(event.startTime, today))
-    .sort((firstEvent, secondEvent) => {
-      const timeDifference =
-        new Date(firstEvent.startTime).getTime() - new Date(secondEvent.startTime).getTime()
-      return timeDifference || firstEvent.id - secondEvent.id
-    })
-  const scheduledMinutes = todaysEvents.reduce(
+  const sectionError = error ?? loadError
+  const scheduledMinutes = events.reduce(
     (total, event) => total + eventDurationMinutes(event),
     0,
   )
 
   async function addEvent(values: EventFormValues) {
     setError(null)
-    const todayDate = localDateKey(new Date())
 
     try {
-      const createdEvent = await createEvent({
+      await createEvent({
         title: values.title,
         description: values.description || null,
         startTime: localDateTime(todayDate, values.startTime),
         endTime: localDateTime(todayDate, values.endTime),
         location: values.location || null,
       })
-      setEvents((currentEvents) => [...currentEvents, createdEvent])
       setIsAddingEvent(false)
     } catch (requestError) {
       setError('The event could not be created. Check the details and try again.')
       throw requestError
+    }
+
+    if (!(await refreshToday())) {
+      setError('The event was created, but Today could not be refreshed. Please reload.')
     }
   }
 
@@ -178,22 +146,21 @@ function Schedule() {
     const eventDate = localDateKey(new Date(event.startTime))
 
     try {
-      const updatedEvent = await updateEvent(event.id, {
+      await updateEvent(event.id, {
         title: values.title,
         description: values.description || null,
         startTime: localDateTime(eventDate, values.startTime),
         endTime: localDateTime(eventDate, values.endTime),
         location: values.location || null,
       })
-      setEvents((currentEvents) =>
-        currentEvents.map((currentEvent) =>
-          currentEvent.id === updatedEvent.id ? updatedEvent : currentEvent,
-        ),
-      )
       setEditingEventId(null)
     } catch (requestError) {
       setError('The event could not be saved. Check the details and try again.')
       throw requestError
+    }
+
+    if (!(await refreshToday())) {
+      setError('The event was saved, but Today could not be refreshed. Please reload.')
     }
   }
 
@@ -203,8 +170,10 @@ function Schedule() {
 
     try {
       await deleteEvent(eventId)
-      setEvents((currentEvents) => currentEvents.filter((event) => event.id !== eventId))
       setConfirmingDeleteEventId(null)
+      if (!(await refreshToday())) {
+        setError('The event was deleted, but Today could not be refreshed. Please reload.')
+      }
     } catch {
       setError('The event could not be deleted. Please try again.')
     } finally {
@@ -220,7 +189,7 @@ function Schedule() {
       <SectionHeading
         eyebrow="Timeline"
         title="Today’s schedule"
-        meta={isLoading ? 'Loading' : `${todaysEvents.length} ${todaysEvents.length === 1 ? 'event' : 'events'}`}
+        meta={isLoading ? 'Loading' : `${events.length} ${events.length === 1 ? 'event' : 'events'}`}
       />
       {!isLoading && (
         <div className="flex justify-end border-b border-white/[0.07] py-3">
@@ -250,20 +219,20 @@ function Schedule() {
             Loading today’s schedule…
           </p>
         )}
-        {!isLoading && error && events.length === 0 && (
+        {!isLoading && sectionError && events.length === 0 && (
           <p role="alert" className="py-5 text-sm text-rose-300">
-            {error}
+            {sectionError}
           </p>
         )}
-        {!isLoading && !error && todaysEvents.length === 0 && (
+        {!isLoading && !sectionError && events.length === 0 && (
           <p className="py-5 text-sm text-zinc-500">No events scheduled for today.</p>
         )}
-        {error && events.length > 0 && (
+        {sectionError && events.length > 0 && (
           <p role="alert" className="border-b border-white/[0.07] py-3 text-xs text-rose-300">
-            {error}
+            {sectionError}
           </p>
         )}
-        {!isLoading && todaysEvents.map((event, index) => (
+        {!isLoading && events.map((event, index) => (
           <article key={event.id} className="border-b border-white/[0.07] last:border-b-0">
             {editingEventId === event.id ? (
               <EventForm
@@ -355,7 +324,7 @@ function Schedule() {
           </article>
         ))}
       </div>
-      {!isLoading && !error && todaysEvents.length > 0 && (
+      {!isLoading && !sectionError && events.length > 0 && (
         <div className="mt-2 flex items-center gap-3 border-t border-dashed border-white/10 pt-5 text-xs text-zinc-500">
           <span className="h-px flex-1 bg-white/10" />
           {formatDuration(scheduledMinutes)} scheduled today
@@ -365,58 +334,57 @@ function Schedule() {
   )
 }
 
-function PriorityTasks() {
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+type PriorityTasksProps = {
+  overdueTasks: Task[]
+  dueTasks: Task[]
+  highPriorityTasks: Task[]
+  todayDate: string
+  isLoading: boolean
+  loadError: string | null
+  refreshToday: RefreshToday
+}
+
+type PriorityTaskEntry = {
+  task: Task
+  context: 'Overdue' | 'Due today' | 'High priority'
+}
+
+function PriorityTasks({
+  overdueTasks,
+  dueTasks,
+  highPriorityTasks,
+  todayDate,
+  isLoading,
+  loadError,
+  refreshToday,
+}: PriorityTasksProps) {
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [updatingTaskId, setUpdatingTaskId] = useState<number | null>(null)
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
   const [confirmingDeleteTaskId, setConfirmingDeleteTaskId] = useState<number | null>(null)
   const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null)
   const [isAddingTask, setIsAddingTask] = useState(false)
 
-  useEffect(() => {
-    let isCurrent = true
-
-    fetchTasks()
-      .then((loadedTasks) => {
-        if (isCurrent) {
-          setTasks(loadedTasks)
-          setError(null)
-        }
-      })
-      .catch(() => {
-        if (isCurrent) {
-          setError('Tasks are unavailable. Check that the backend is running.')
-        }
-      })
-      .finally(() => {
-        if (isCurrent) {
-          setIsLoading(false)
-        }
-      })
-
-    return () => {
-      isCurrent = false
-    }
-  }, [])
-
-  const remainingTaskCount = tasks.filter((task) => task.status !== 'Done').length
+  const tasks: PriorityTaskEntry[] = [
+    ...overdueTasks.map((task) => ({ task, context: 'Overdue' as const })),
+    ...dueTasks.map((task) => ({ task, context: 'Due today' as const })),
+    ...highPriorityTasks.map((task) => ({ task, context: 'High priority' as const })),
+  ]
+  const sectionError = error ?? loadError
 
   async function toggleTaskStatus(task: Task) {
     setUpdatingTaskId(task.id)
     setError(null)
+    setNotice(null)
 
     try {
-      const updatedTask = await updateTask(task.id, {
+      await updateTask(task.id, {
         status: task.status === 'Done' ? 'To do' : 'Done',
       })
-
-      setTasks((currentTasks) =>
-        currentTasks.map((currentTask) =>
-          currentTask.id === updatedTask.id ? updatedTask : currentTask,
-        ),
-      )
+      if (!(await refreshToday())) {
+        setError('The task was updated, but Today could not be refreshed. Please reload.')
+      }
     } catch {
       setError('The task could not be updated. Please try again.')
     } finally {
@@ -426,40 +394,54 @@ function PriorityTasks() {
 
   async function addTask(values: TaskFormValues) {
     setError(null)
+    setNotice(null)
 
     try {
-      const createdTask = await createTask({ ...values, status: 'To do' })
-      setTasks((currentTasks) => [...currentTasks, createdTask])
+      await createTask({ ...values, status: 'To do' })
       setIsAddingTask(false)
     } catch (requestError) {
       setError('The task could not be created. Please try again.')
       throw requestError
     }
+
+    const belongsInToday =
+      values.priority === 'High' ||
+      (values.dueDate !== null && values.dueDate <= todayDate)
+    if (!(await refreshToday())) {
+      setError('The task was created, but Today could not be refreshed. Please reload.')
+    } else if (!belongsInToday) {
+      setNotice('Task saved. It is outside Today’s priority view.')
+    }
   }
 
   async function editTask(taskId: number, values: TaskFormValues) {
     setError(null)
+    setNotice(null)
 
     try {
-      const updatedTask = await updateTask(taskId, values)
-      setTasks((currentTasks) =>
-        currentTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)),
-      )
+      await updateTask(taskId, values)
       setEditingTaskId(null)
     } catch (requestError) {
       setError('The task could not be saved. Please try again.')
       throw requestError
+    }
+
+    if (!(await refreshToday())) {
+      setError('The task was saved, but Today could not be refreshed. Please reload.')
     }
   }
 
   async function removeTask(taskId: number) {
     setDeletingTaskId(taskId)
     setError(null)
+    setNotice(null)
 
     try {
       await deleteTask(taskId)
-      setTasks((currentTasks) => currentTasks.filter((task) => task.id !== taskId))
       setConfirmingDeleteTaskId(null)
+      if (!(await refreshToday())) {
+        setError('The task was deleted, but Today could not be refreshed. Please reload.')
+      }
     } catch {
       setError('The task could not be deleted. Please try again.')
     } finally {
@@ -475,7 +457,7 @@ function PriorityTasks() {
       <SectionHeading
         eyebrow="Focus"
         title="Priority tasks"
-        meta={isLoading ? 'Loading' : `${remainingTaskCount} remaining`}
+        meta={isLoading ? 'Loading' : `${tasks.length} remaining`}
       />
       {!isLoading && (
         <div className="flex justify-end border-b border-white/[0.07] py-3">
@@ -492,26 +474,36 @@ function PriorityTasks() {
         </div>
       )}
       {isAddingTask && (
-        <TaskForm
-          submitLabel="Add task"
-          onSubmit={addTask}
-          onCancel={() => setIsAddingTask(false)}
-        />
+        <div>
+          <p className="pt-4 text-xs leading-5 text-zinc-500">
+            Today shows overdue, due today, and high-priority tasks. Other tasks are still saved.
+          </p>
+          <TaskForm
+            submitLabel="Add task"
+            onSubmit={addTask}
+            onCancel={() => setIsAddingTask(false)}
+          />
+        </div>
       )}
       <div className="mt-2">
         {isLoading && (
           <p role="status" className="py-5 text-sm text-zinc-500">Loading tasks…</p>
         )}
-        {!isLoading && error && tasks.length === 0 && (
-          <p role="alert" className="py-5 text-sm leading-6 text-rose-300">{error}</p>
+        {!isLoading && sectionError && tasks.length === 0 && (
+          <p role="alert" className="py-5 text-sm leading-6 text-rose-300">{sectionError}</p>
         )}
-        {!isLoading && !error && tasks.length === 0 && (
+        {!isLoading && !sectionError && tasks.length === 0 && (
           <p className="py-5 text-sm text-zinc-500">No priority tasks yet.</p>
         )}
-        {error && tasks.length > 0 && (
-          <p role="alert" className="border-b border-white/[0.07] py-3 text-xs text-rose-300">{error}</p>
+        {sectionError && tasks.length > 0 && (
+          <p role="alert" className="border-b border-white/[0.07] py-3 text-xs text-rose-300">{sectionError}</p>
         )}
-        {tasks.map((task, index) => (
+        {notice && (
+          <p role="status" className="border-b border-white/[0.07] py-3 text-xs text-amber-200">
+            {notice}
+          </p>
+        )}
+        {tasks.map(({ task, context }, index) => (
           <article key={task.id} className="border-b border-white/[0.07] last:border-b-0">
             {editingTaskId === task.id ? (
               <TaskForm
@@ -545,7 +537,10 @@ function PriorityTasks() {
                     {task.title}
                   </h3>
                   <p className="mt-1 text-xs text-zinc-500">
-                    {task.category}{task.dueDate ? ` · Due ${task.dueDate}` : ''}
+                    <span className={context === 'Overdue' ? 'text-rose-300' : 'text-amber-200'}>
+                      {context}
+                    </span>
+                    {` · ${task.category}`}{task.dueDate ? ` · Due ${task.dueDate}` : ''}
                   </p>
                   <div className="mt-2 flex gap-3 text-[0.65rem]">
                     <button
@@ -612,53 +607,35 @@ function PriorityTasks() {
   )
 }
 
-function ActiveProjects() {
-  const [projects, setProjects] = useState<Project[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+type ActiveProjectsProps = {
+  projects: Project[]
+  isLoading: boolean
+  loadError: string | null
+  refreshToday: RefreshToday
+}
+
+function ActiveProjects({ projects, isLoading, loadError, refreshToday }: ActiveProjectsProps) {
   const [error, setError] = useState<string | null>(null)
   const [editingProjectId, setEditingProjectId] = useState<number | null>(null)
   const [confirmingDeleteProjectId, setConfirmingDeleteProjectId] = useState<number | null>(null)
   const [deletingProjectId, setDeletingProjectId] = useState<number | null>(null)
   const [isAddingProject, setIsAddingProject] = useState(false)
 
-  useEffect(() => {
-    let isCurrent = true
-
-    fetchProjects()
-      .then((loadedProjects) => {
-        if (isCurrent) {
-          setProjects(loadedProjects)
-          setError(null)
-        }
-      })
-      .catch(() => {
-        if (isCurrent) {
-          setError('Projects are unavailable. Check that the backend is running.')
-        }
-      })
-      .finally(() => {
-        if (isCurrent) {
-          setIsLoading(false)
-        }
-      })
-
-    return () => {
-      isCurrent = false
-    }
-  }, [])
-
-  const activeProjectCount = projects.filter((project) => project.status !== 'Completed').length
+  const sectionError = error ?? loadError
 
   async function addProject(values: ProjectFormValues) {
     setError(null)
 
     try {
-      const createdProject = await createProject(values)
-      setProjects((currentProjects) => [...currentProjects, createdProject])
+      await createProject(values)
       setIsAddingProject(false)
     } catch (requestError) {
       setError('The project could not be created. Please try again.')
       throw requestError
+    }
+
+    if (!(await refreshToday())) {
+      setError('The project was created, but Today could not be refreshed. Please reload.')
     }
   }
 
@@ -666,16 +643,15 @@ function ActiveProjects() {
     setError(null)
 
     try {
-      const updatedProject = await updateProject(projectId, values)
-      setProjects((currentProjects) =>
-        currentProjects.map((project) =>
-          project.id === updatedProject.id ? updatedProject : project,
-        ),
-      )
+      await updateProject(projectId, values)
       setEditingProjectId(null)
     } catch (requestError) {
       setError('The project could not be saved. Please try again.')
       throw requestError
+    }
+
+    if (!(await refreshToday())) {
+      setError('The project was saved, but Today could not be refreshed. Please reload.')
     }
   }
 
@@ -685,10 +661,10 @@ function ActiveProjects() {
 
     try {
       await deleteProject(projectId)
-      setProjects((currentProjects) =>
-        currentProjects.filter((project) => project.id !== projectId),
-      )
       setConfirmingDeleteProjectId(null)
+      if (!(await refreshToday())) {
+        setError('The project was deleted, but Today could not be refreshed. Please reload.')
+      }
     } catch {
       setError('The project could not be deleted. Please try again.')
     } finally {
@@ -701,7 +677,7 @@ function ActiveProjects() {
       <SectionHeading
         eyebrow="Momentum"
         title="Active projects"
-        meta={isLoading ? 'Loading' : `${activeProjectCount} in motion`}
+        meta={isLoading ? 'Loading' : `${projects.length} in motion`}
       />
       {!isLoading && (
         <div className="flex justify-end border-b border-white/[0.07] py-3">
@@ -732,15 +708,15 @@ function ActiveProjects() {
             Loading projects…
           </p>
         )}
-        {!isLoading && error && projects.length === 0 && (
+        {!isLoading && sectionError && projects.length === 0 && (
           <p role="alert" className="bg-[#0d0f12] p-5 text-sm text-rose-300 sm:p-6 md:col-span-3">
-            {error}
+            {sectionError}
           </p>
         )}
-        {error && projects.length > 0 && (
-          <p role="alert" className="bg-[#0d0f12] p-4 text-xs text-rose-300 md:col-span-3">{error}</p>
+        {sectionError && projects.length > 0 && (
+          <p role="alert" className="bg-[#0d0f12] p-4 text-xs text-rose-300 md:col-span-3">{sectionError}</p>
         )}
-        {!isLoading && !error && projects.length === 0 && (
+        {!isLoading && !sectionError && projects.length === 0 && (
           <p className="bg-[#0d0f12] p-5 text-sm text-zinc-500 sm:p-6 md:col-span-3">
             No active projects yet.
           </p>
@@ -867,7 +843,49 @@ function DailyBrief() {
 }
 
 function App() {
-  const today = formatToday()
+  const todayDisplay = formatToday()
+  const todayDate = localDateKey(new Date())
+  const [today, setToday] = useState<Today | null>(null)
+  const [isTodayLoading, setIsTodayLoading] = useState(true)
+  const [todayError, setTodayError] = useState<string | null>(null)
+
+  const requestToday = useCallback(() => fetchToday(todayDate), [todayDate])
+
+  const refreshToday = useCallback(async () => {
+    try {
+      setToday(await requestToday())
+      setTodayError(null)
+      return true
+    } catch {
+      return false
+    }
+  }, [requestToday])
+
+  useEffect(() => {
+    let isCurrent = true
+
+    requestToday()
+      .then((loadedToday) => {
+        if (isCurrent) {
+          setToday(loadedToday)
+          setTodayError(null)
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setTodayError('Today is unavailable. Check that the backend is running.')
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsTodayLoading(false)
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [requestToday])
 
   return (
     <div className="min-h-screen bg-[#0a0b0d] text-zinc-100">
@@ -902,22 +920,43 @@ function App() {
             </h1>
           </div>
           <div className="flex items-center gap-4 lg:flex-col lg:items-end lg:gap-1">
-            <span className="font-mono text-xs tracking-wider text-amber-200">{today.shortDate}</span>
+            <span className="font-mono text-xs tracking-wider text-amber-200">{todayDisplay.shortDate}</span>
             <div className="text-right">
-              <p className="text-xl font-medium text-zinc-100">{today.day}</p>
-              <p className="mt-1 text-xs text-zinc-500">{today.date}</p>
+              <p className="text-xl font-medium text-zinc-100">{todayDisplay.day}</p>
+              <p className="mt-1 text-xs text-zinc-500">{todayDisplay.date}</p>
             </div>
           </div>
         </section>
 
         <div className="mt-8 grid gap-6 xl:grid-cols-[1.15fr_1fr_0.8fr]">
-          <Schedule />
-          <div id="tasks"><PriorityTasks /></div>
+          <Schedule
+            events={today?.events ?? []}
+            todayDate={todayDate}
+            isLoading={isTodayLoading}
+            loadError={todayError}
+            refreshToday={refreshToday}
+          />
+          <div id="tasks">
+            <PriorityTasks
+              overdueTasks={today?.overdueTasks ?? []}
+              dueTasks={today?.dueTasks ?? []}
+              highPriorityTasks={today?.highPriorityTasks ?? []}
+              todayDate={todayDate}
+              isLoading={isTodayLoading}
+              loadError={todayError}
+              refreshToday={refreshToday}
+            />
+          </div>
           <DailyBrief />
         </div>
 
         <div id="projects" className="mt-12 sm:mt-16">
-          <ActiveProjects />
+          <ActiveProjects
+            projects={today?.activeProjects ?? []}
+            isLoading={isTodayLoading}
+            loadError={todayError}
+            refreshToday={refreshToday}
+          />
         </div>
       </main>
 

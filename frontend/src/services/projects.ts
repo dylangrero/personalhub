@@ -6,7 +6,7 @@ import type {
 } from '../types/project'
 import { apiRequest } from './api'
 
-type ProjectApiResponse = {
+export type ProjectApiResponse = {
   id: number
   name: string
   description: string
@@ -26,7 +26,7 @@ type ProjectApiPayload = {
   deadline?: string | null
 }
 
-function fromApiProject(project: ProjectApiResponse): Project {
+export function fromApiProject(project: ProjectApiResponse): Project {
   return {
     id: project.id,
     name: project.name,

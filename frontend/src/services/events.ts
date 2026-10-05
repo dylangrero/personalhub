@@ -1,7 +1,7 @@
 import type { Event, EventCreate, EventUpdate } from '../types/event'
 import { apiRequest } from './api'
 
-type EventApiResponse = {
+export type EventApiResponse = {
   id: number
   title: string
   description: string | null
@@ -19,7 +19,7 @@ type EventApiPayload = {
   location?: string | null
 }
 
-function fromApiEvent(event: EventApiResponse): Event {
+export function fromApiEvent(event: EventApiResponse): Event {
   return {
     id: event.id,
     title: event.title,

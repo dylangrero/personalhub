@@ -11,7 +11,8 @@
   - [ ] Full calendar and date navigation
 - [ ] Today view
   - [x] Deterministic backend aggregation (no AI)
-  - [ ] Dashboard Today integration
+  - [x] Dashboard Today integration
+  - [ ] Daily Brief integration
 - [x] Connect dashboard to real data
 - [ ] V1 polish
 

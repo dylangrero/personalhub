@@ -1,7 +1,7 @@
 import type { Task, TaskCreate, TaskPriority, TaskStatus, TaskUpdate } from '../types/task'
 import { apiRequest } from './api'
 
-type TaskApiResponse = {
+export type TaskApiResponse = {
   id: number
   title: string
   category: string
@@ -19,7 +19,7 @@ type TaskApiPayload = {
   due_date?: string | null
 }
 
-function fromApiTask(task: TaskApiResponse): Task {
+export function fromApiTask(task: TaskApiResponse): Task {
   return {
     id: task.id,
     title: task.title,
