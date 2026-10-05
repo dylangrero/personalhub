@@ -1,14 +1,19 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_database
 from app.routes.events import router as events_router
+from app.routes.google_calendar import router as google_calendar_router
 from app.routes.projects import router as projects_router
 from app.routes.tasks import router as tasks_router
 from app.routes.today import router as today_router
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
 
 
 @asynccontextmanager
@@ -33,6 +38,7 @@ app.include_router(tasks_router)
 app.include_router(projects_router)
 app.include_router(events_router)
 app.include_router(today_router)
+app.include_router(google_calendar_router)
 
 
 @app.get("/health")

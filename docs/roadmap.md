@@ -18,6 +18,8 @@
 
 ## V2
 - [ ] Google Calendar integration
+  - [x] OAuth connection foundation
+  - [ ] Event import and sync
 - [ ] Recurring tasks
 - [ ] Better planning tools
 

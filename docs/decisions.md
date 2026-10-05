@@ -11,7 +11,9 @@ Use SQLite initially.
 
 ## Calendar
 Build internal events first.
-Google Calendar integration comes later.
+Google Calendar connection uses Google's OAuth 2.0 web-server flow with
+read-only access. For local single-user V1, the refresh token is stored in a
+gitignored local file. Importing Google events remains a separate later step.
 
 ## AI
 AI is not required for the core application.

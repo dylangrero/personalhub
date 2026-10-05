@@ -3,6 +3,8 @@ backend/.venv/
 __pycache__/
 *.py[cod]
 *.db
+backend/.env
+backend/.secrets/
 
 # Environment files
 .env
