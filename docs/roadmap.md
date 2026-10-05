@@ -6,7 +6,8 @@
 - [x] Projects
 - [ ] Calendar/events
   - [x] Backend Event model and CRUD API
-  - [ ] Dashboard schedule integration
+  - [x] Dashboard schedule integration
+  - [ ] Event management UI
 - [ ] Today view
 - [x] Connect dashboard to real data
 - [ ] V1 polish

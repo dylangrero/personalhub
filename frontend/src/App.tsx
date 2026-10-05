@@ -2,48 +2,14 @@ import { useEffect, useState } from 'react'
 
 import { ProjectForm, type ProjectFormValues } from './components/ProjectForm'
 import { TaskForm, type TaskFormValues } from './components/TaskForm'
+import { fetchEvents } from './services/events'
 import { createProject, deleteProject, fetchProjects, updateProject } from './services/projects'
 import { createTask, deleteTask, fetchTasks, updateTask } from './services/tasks'
+import type { Event as CalendarEvent } from './types/event'
 import type { Project } from './types/project'
 import type { Task } from './types/task'
 
-type ScheduleItem = {
-  time: string
-  title: string
-  detail: string
-  duration: string
-  accent: 'amber' | 'blue' | 'green'
-}
-
-const schedule: ScheduleItem[] = [
-  {
-    time: '09:30',
-    title: 'Weekly planning',
-    detail: 'Personal · Desk',
-    duration: '45 min',
-    accent: 'amber',
-  },
-  {
-    time: '11:00',
-    title: 'Focus block',
-    detail: 'Personal Hub',
-    duration: '2 hours',
-    accent: 'blue',
-  },
-  {
-    time: '15:30',
-    title: 'Afternoon walk',
-    detail: 'Outside',
-    duration: '30 min',
-    accent: 'green',
-  },
-]
-
-const accentClasses: Record<ScheduleItem['accent'], string> = {
-  amber: 'bg-amber-300',
-  blue: 'bg-sky-300',
-  green: 'bg-emerald-300',
-}
+const scheduleAccentClasses = ['bg-amber-300', 'bg-sky-300', 'bg-emerald-300']
 
 function formatToday() {
   const today = new Date()
@@ -86,34 +52,145 @@ function SectionHeading({
   )
 }
 
-function Schedule() {
+function occursToday(startTime: string, today: Date) {
+  const eventDate = new Date(startTime)
+
   return (
-    <section className="border border-white/10 bg-white/[0.025] p-5 sm:p-6 lg:p-7">
-      <SectionHeading eyebrow="Timeline" title="Today’s schedule" meta="3 events" />
+    !Number.isNaN(eventDate.getTime()) &&
+    eventDate.getFullYear() === today.getFullYear() &&
+    eventDate.getMonth() === today.getMonth() &&
+    eventDate.getDate() === today.getDate()
+  )
+}
+
+function formatEventTime(dateTime: string) {
+  return new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(dateTime))
+}
+
+function eventDurationMinutes(event: CalendarEvent) {
+  return Math.max(
+    0,
+    Math.round((new Date(event.endTime).getTime() - new Date(event.startTime).getTime()) / 60_000),
+  )
+}
+
+function formatDuration(minutes: number) {
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+
+  if (hours === 0) return `${remainingMinutes} min`
+  if (remainingMinutes === 0) return `${hours}h`
+  return `${hours}h ${remainingMinutes}m`
+}
+
+function Schedule() {
+  const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isCurrent = true
+
+    fetchEvents()
+      .then((loadedEvents) => {
+        if (isCurrent) {
+          setEvents(loadedEvents)
+          setError(null)
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setError('Schedule is unavailable. Check that the backend is running.')
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsLoading(false)
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
+
+  const today = new Date()
+  const todaysEvents = events
+    .filter((event) => occursToday(event.startTime, today))
+    .sort((firstEvent, secondEvent) => {
+      const timeDifference =
+        new Date(firstEvent.startTime).getTime() - new Date(secondEvent.startTime).getTime()
+      return timeDifference || firstEvent.id - secondEvent.id
+    })
+  const scheduledMinutes = todaysEvents.reduce(
+    (total, event) => total + eventDurationMinutes(event),
+    0,
+  )
+
+  return (
+    <section
+      aria-busy={isLoading}
+      className="border border-white/10 bg-white/[0.025] p-5 sm:p-6 lg:p-7"
+    >
+      <SectionHeading
+        eyebrow="Timeline"
+        title="Today’s schedule"
+        meta={isLoading ? 'Loading' : `${todaysEvents.length} ${todaysEvents.length === 1 ? 'event' : 'events'}`}
+      />
       <div className="mt-2">
-        {schedule.map((item) => (
+        {isLoading && (
+          <p role="status" className="py-5 text-sm text-zinc-500">
+            Loading today’s schedule…
+          </p>
+        )}
+        {!isLoading && error && (
+          <p role="alert" className="py-5 text-sm text-rose-300">
+            {error}
+          </p>
+        )}
+        {!isLoading && !error && todaysEvents.length === 0 && (
+          <p className="py-5 text-sm text-zinc-500">No events scheduled for today.</p>
+        )}
+        {!isLoading && !error && todaysEvents.map((event, index) => (
           <article
-            key={`${item.time}-${item.title}`}
+            key={event.id}
             className="group grid grid-cols-[3.5rem_0.5rem_1fr] gap-3 border-b border-white/[0.07] py-5 last:border-b-0 sm:grid-cols-[4.25rem_0.5rem_1fr_auto] sm:items-center sm:gap-4"
           >
-            <time className="font-mono text-xs text-zinc-400">{item.time}</time>
-            <span className={`h-2 w-2 ${accentClasses[item.accent]}`} aria-hidden="true" />
+            <div className="flex flex-col font-mono text-xs text-zinc-400">
+              <time dateTime={event.startTime}>{formatEventTime(event.startTime)}</time>
+              <time dateTime={event.endTime} className="text-zinc-600">
+                {formatEventTime(event.endTime)}
+              </time>
+            </div>
+            <span
+              className={`h-2 w-2 ${scheduleAccentClasses[index % scheduleAccentClasses.length]}`}
+              aria-hidden="true"
+            />
             <div>
               <h3 className="text-sm font-medium text-zinc-100 transition-colors group-hover:text-white">
-                {item.title}
+                {event.title}
               </h3>
-              <p className="mt-1 text-xs text-zinc-500">{item.detail}</p>
+              {(event.location || event.description) && (
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-500">
+                  {[event.location, event.description].filter(Boolean).join(' · ')}
+                </p>
+              )}
             </div>
             <span className="col-start-3 text-xs text-zinc-600 sm:col-start-auto">
-              {item.duration}
+              {formatDuration(eventDurationMinutes(event))}
             </span>
           </article>
         ))}
       </div>
-      <div className="mt-2 flex items-center gap-3 border-t border-dashed border-white/10 pt-5 text-xs text-zinc-500">
-        <span className="h-px flex-1 bg-white/10" />
-        4h 45m open today
-      </div>
+      {!isLoading && !error && todaysEvents.length > 0 && (
+        <div className="mt-2 flex items-center gap-3 border-t border-dashed border-white/10 pt-5 text-xs text-zinc-500">
+          <span className="h-px flex-1 bg-white/10" />
+          {formatDuration(scheduledMinutes)} scheduled today
+        </div>
+      )}
     </section>
   )
 }
