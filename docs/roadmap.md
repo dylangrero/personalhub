@@ -7,7 +7,8 @@
 - [ ] Calendar/events
   - [x] Backend Event model and CRUD API
   - [x] Dashboard schedule integration
-  - [ ] Event management UI
+  - [x] Event management UI
+  - [ ] Full calendar and date navigation
 - [ ] Today view
 - [x] Connect dashboard to real data
 - [ ] V1 polish

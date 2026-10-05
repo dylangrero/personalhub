@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 
+import { EventForm, type EventFormValues } from './components/EventForm'
 import { ProjectForm, type ProjectFormValues } from './components/ProjectForm'
 import { TaskForm, type TaskFormValues } from './components/TaskForm'
-import { fetchEvents } from './services/events'
+import { createEvent, deleteEvent, fetchEvents, updateEvent } from './services/events'
 import { createProject, deleteProject, fetchProjects, updateProject } from './services/projects'
 import { createTask, deleteTask, fetchTasks, updateTask } from './services/tasks'
 import type { Event as CalendarEvent } from './types/event'
@@ -70,6 +71,24 @@ function formatEventTime(dateTime: string) {
   }).format(new Date(dateTime))
 }
 
+function localDateKey(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function eventTimeInputValue(dateTime: string) {
+  const date = new Date(dateTime)
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
+function localDateTime(date: string, time: string) {
+  return `${date}T${time}:00`
+}
+
 function eventDurationMinutes(event: CalendarEvent) {
   return Math.max(
     0,
@@ -90,6 +109,10 @@ function Schedule() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [editingEventId, setEditingEventId] = useState<number | null>(null)
+  const [confirmingDeleteEventId, setConfirmingDeleteEventId] = useState<number | null>(null)
+  const [deletingEventId, setDeletingEventId] = useState<number | null>(null)
+  const [isAddingEvent, setIsAddingEvent] = useState(false)
 
   useEffect(() => {
     let isCurrent = true
@@ -130,6 +153,65 @@ function Schedule() {
     0,
   )
 
+  async function addEvent(values: EventFormValues) {
+    setError(null)
+    const todayDate = localDateKey(new Date())
+
+    try {
+      const createdEvent = await createEvent({
+        title: values.title,
+        description: values.description || null,
+        startTime: localDateTime(todayDate, values.startTime),
+        endTime: localDateTime(todayDate, values.endTime),
+        location: values.location || null,
+      })
+      setEvents((currentEvents) => [...currentEvents, createdEvent])
+      setIsAddingEvent(false)
+    } catch (requestError) {
+      setError('The event could not be created. Check the details and try again.')
+      throw requestError
+    }
+  }
+
+  async function editEvent(event: CalendarEvent, values: EventFormValues) {
+    setError(null)
+    const eventDate = localDateKey(new Date(event.startTime))
+
+    try {
+      const updatedEvent = await updateEvent(event.id, {
+        title: values.title,
+        description: values.description || null,
+        startTime: localDateTime(eventDate, values.startTime),
+        endTime: localDateTime(eventDate, values.endTime),
+        location: values.location || null,
+      })
+      setEvents((currentEvents) =>
+        currentEvents.map((currentEvent) =>
+          currentEvent.id === updatedEvent.id ? updatedEvent : currentEvent,
+        ),
+      )
+      setEditingEventId(null)
+    } catch (requestError) {
+      setError('The event could not be saved. Check the details and try again.')
+      throw requestError
+    }
+  }
+
+  async function removeEvent(eventId: number) {
+    setDeletingEventId(eventId)
+    setError(null)
+
+    try {
+      await deleteEvent(eventId)
+      setEvents((currentEvents) => currentEvents.filter((event) => event.id !== eventId))
+      setConfirmingDeleteEventId(null)
+    } catch {
+      setError('The event could not be deleted. Please try again.')
+    } finally {
+      setDeletingEventId(null)
+    }
+  }
+
   return (
     <section
       aria-busy={isLoading}
@@ -140,13 +222,35 @@ function Schedule() {
         title="Today’s schedule"
         meta={isLoading ? 'Loading' : `${todaysEvents.length} ${todaysEvents.length === 1 ? 'event' : 'events'}`}
       />
+      {!isLoading && (
+        <div className="flex justify-end border-b border-white/[0.07] py-3">
+          <button
+            type="button"
+            onClick={() => {
+              setEditingEventId(null)
+              setConfirmingDeleteEventId(null)
+              setIsAddingEvent((isOpen) => !isOpen)
+            }}
+            className="cursor-pointer text-xs font-medium text-amber-200 transition-colors hover:text-amber-100"
+          >
+            {isAddingEvent ? 'Close' : '+ Add event'}
+          </button>
+        </div>
+      )}
+      {isAddingEvent && (
+        <EventForm
+          submitLabel="Add event"
+          onSubmit={addEvent}
+          onCancel={() => setIsAddingEvent(false)}
+        />
+      )}
       <div className="mt-2">
         {isLoading && (
           <p role="status" className="py-5 text-sm text-zinc-500">
             Loading today’s schedule…
           </p>
         )}
-        {!isLoading && error && (
+        {!isLoading && error && events.length === 0 && (
           <p role="alert" className="py-5 text-sm text-rose-300">
             {error}
           </p>
@@ -154,34 +258,100 @@ function Schedule() {
         {!isLoading && !error && todaysEvents.length === 0 && (
           <p className="py-5 text-sm text-zinc-500">No events scheduled for today.</p>
         )}
-        {!isLoading && !error && todaysEvents.map((event, index) => (
-          <article
-            key={event.id}
-            className="group grid grid-cols-[3.5rem_0.5rem_1fr] gap-3 border-b border-white/[0.07] py-5 last:border-b-0 sm:grid-cols-[4.25rem_0.5rem_1fr_auto] sm:items-center sm:gap-4"
-          >
-            <div className="flex flex-col font-mono text-xs text-zinc-400">
-              <time dateTime={event.startTime}>{formatEventTime(event.startTime)}</time>
-              <time dateTime={event.endTime} className="text-zinc-600">
-                {formatEventTime(event.endTime)}
-              </time>
-            </div>
-            <span
-              className={`h-2 w-2 ${scheduleAccentClasses[index % scheduleAccentClasses.length]}`}
-              aria-hidden="true"
-            />
-            <div>
-              <h3 className="text-sm font-medium text-zinc-100 transition-colors group-hover:text-white">
-                {event.title}
-              </h3>
-              {(event.location || event.description) && (
-                <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-500">
-                  {[event.location, event.description].filter(Boolean).join(' · ')}
-                </p>
-              )}
-            </div>
-            <span className="col-start-3 text-xs text-zinc-600 sm:col-start-auto">
-              {formatDuration(eventDurationMinutes(event))}
-            </span>
+        {error && events.length > 0 && (
+          <p role="alert" className="border-b border-white/[0.07] py-3 text-xs text-rose-300">
+            {error}
+          </p>
+        )}
+        {!isLoading && todaysEvents.map((event, index) => (
+          <article key={event.id} className="border-b border-white/[0.07] last:border-b-0">
+            {editingEventId === event.id ? (
+              <EventForm
+                initialValues={{
+                  title: event.title,
+                  startTime: eventTimeInputValue(event.startTime),
+                  endTime: eventTimeInputValue(event.endTime),
+                  location: event.location ?? '',
+                  description: event.description ?? '',
+                }}
+                submitLabel="Save changes"
+                onSubmit={(values) => editEvent(event, values)}
+                onCancel={() => setEditingEventId(null)}
+              />
+            ) : (
+              <div className="group grid grid-cols-[3.5rem_0.5rem_1fr] gap-3 py-5 sm:grid-cols-[4.25rem_0.5rem_1fr_auto] sm:items-center sm:gap-4">
+                <div className="flex flex-col font-mono text-xs text-zinc-400">
+                  <time dateTime={event.startTime}>{formatEventTime(event.startTime)}</time>
+                  <time dateTime={event.endTime} className="text-zinc-600">
+                    {formatEventTime(event.endTime)}
+                  </time>
+                </div>
+                <span
+                  className={`h-2 w-2 ${scheduleAccentClasses[index % scheduleAccentClasses.length]}`}
+                  aria-hidden="true"
+                />
+                <div>
+                  <h3 className="text-sm font-medium text-zinc-100 transition-colors group-hover:text-white">
+                    {event.title}
+                  </h3>
+                  {(event.location || event.description) && (
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-500">
+                      {[event.location, event.description].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                  <div className="mt-2 flex gap-3 text-[0.65rem]">
+                    <button
+                      type="button"
+                      aria-label={`Edit ${event.title}`}
+                      onClick={() => {
+                        setIsAddingEvent(false)
+                        setConfirmingDeleteEventId(null)
+                        setEditingEventId(event.id)
+                      }}
+                      className="cursor-pointer text-zinc-600 transition-colors hover:text-zinc-300"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Delete ${event.title}`}
+                      onClick={() => setConfirmingDeleteEventId(event.id)}
+                      className="cursor-pointer text-zinc-600 transition-colors hover:text-rose-300"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                <span className="col-start-3 text-xs text-zinc-600 sm:col-start-auto">
+                  {formatDuration(eventDurationMinutes(event))}
+                </span>
+              </div>
+            )}
+            {confirmingDeleteEventId === event.id && (
+              <div className="flex items-center justify-between gap-3 border-t border-white/[0.07] py-3 text-xs">
+                <span className="text-rose-200">Delete this event?</span>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    aria-label={`Cancel deleting ${event.title}`}
+                    onClick={() => setConfirmingDeleteEventId(null)}
+                    disabled={deletingEventId === event.id}
+                    className="cursor-pointer text-zinc-500 hover:text-zinc-200 disabled:cursor-wait disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Confirm deleting ${event.title}`}
+                    onClick={() => void removeEvent(event.id)}
+                    disabled={deletingEventId === event.id}
+                    className="cursor-pointer text-rose-300 hover:text-rose-200 disabled:cursor-wait disabled:opacity-50"
+                  >
+                    {deletingEventId === event.id ? 'Deleting…' : 'Confirm delete'}
+                  </button>
+                </div>
+              </div>
+            )}
           </article>
         ))}
       </div>
