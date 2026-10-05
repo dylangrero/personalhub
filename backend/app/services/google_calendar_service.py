@@ -2,9 +2,11 @@ import hmac
 import json
 import os
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
@@ -25,6 +27,14 @@ class GoogleCalendarOAuthError(RuntimeError):
     pass
 
 
+class GoogleCalendarNotConnectedError(RuntimeError):
+    pass
+
+
+class GoogleCalendarApiError(RuntimeError):
+    pass
+
+
 @dataclass(frozen=True)
 class GoogleCalendarSettings:
     client_id: str
@@ -35,6 +45,13 @@ class GoogleCalendarSettings:
     @property
     def state_path(self) -> Path:
         return self.token_path.with_suffix(".state.json")
+
+
+@dataclass(frozen=True)
+class GoogleCalendarSnapshot:
+    calendar_id: str
+    calendar_timezone: str
+    events: list[dict[str, Any]]
 
 
 def get_settings() -> GoogleCalendarSettings:
@@ -130,6 +147,48 @@ def disconnect() -> None:
     settings.state_path.unlink(missing_ok=True)
 
 
+def fetch_primary_calendar_events(
+    time_min: datetime,
+    time_max: datetime,
+) -> GoogleCalendarSnapshot:
+    calendar_service = _get_authenticated_calendar_service()
+
+    try:
+        calendar = calendar_service.calendars().get(calendarId="primary").execute()
+        calendar_id = str(calendar.get("id", "primary"))
+        calendar_timezone = str(calendar.get("timeZone", "UTC"))
+        events: list[dict[str, Any]] = []
+        page_token: str | None = None
+
+        while True:
+            response = (
+                calendar_service.events()
+                .list(
+                    calendarId="primary",
+                    timeMin=_rfc3339(time_min),
+                    timeMax=_rfc3339(time_max),
+                    singleEvents=True,
+                    showDeleted=True,
+                    orderBy="startTime",
+                    maxResults=2500,
+                    pageToken=page_token,
+                )
+                .execute()
+            )
+            events.extend(response.get("items", []))
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break
+    except Exception as error:
+        raise GoogleCalendarApiError("Google Calendar event retrieval failed") from error
+
+    return GoogleCalendarSnapshot(
+        calendar_id=calendar_id,
+        calendar_timezone=calendar_timezone,
+        events=events,
+    )
+
+
 def _create_flow(
     settings: GoogleCalendarSettings,
     state: str | None = None,
@@ -152,6 +211,45 @@ def _create_flow(
         code_verifier=code_verifier,
         autogenerate_code_verifier=code_verifier is None,
     )
+
+
+def _get_authenticated_calendar_service() -> Any:
+    settings = get_settings()
+    if not settings.token_path.is_file():
+        raise GoogleCalendarNotConnectedError("Google Calendar is not connected")
+
+    try:
+        credentials = Credentials.from_authorized_user_file(settings.token_path, SCOPES)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise GoogleCalendarNotConnectedError("Google Calendar is not connected") from error
+
+    if credentials.expired:
+        if not credentials.refresh_token:
+            raise GoogleCalendarNotConnectedError("Google Calendar is not connected")
+        try:
+            credentials.refresh(Request())
+            _write_private_json(settings.token_path, credentials.to_json())
+        except Exception as error:
+            raise GoogleCalendarApiError("Google Calendar credential refresh failed") from error
+
+    if not credentials.valid:
+        raise GoogleCalendarNotConnectedError("Google Calendar is not connected")
+
+    try:
+        return build(
+            "calendar",
+            "v3",
+            credentials=credentials,
+            cache_discovery=False,
+        )
+    except Exception as error:
+        raise GoogleCalendarApiError("Google Calendar client setup failed") from error
+
+
+def _rfc3339(value: datetime) -> str:
+    if value.tzinfo is None:
+        raise ValueError("Google Calendar sync boundaries must be timezone-aware")
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _read_pending_authorization(state_path: Path) -> tuple[str, str]:

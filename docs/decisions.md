@@ -13,7 +13,13 @@ Use SQLite initially.
 Build internal events first.
 Google Calendar connection uses Google's OAuth 2.0 web-server flow with
 read-only access. For local single-user V1, the refresh token is stored in a
-gitignored local file. Importing Google events remains a separate later step.
+gitignored local file.
+
+Google Calendar events are synchronized into a separate local cache table,
+rather than merged into the user-managed Event table. Sync is manual and
+read-only, covers 30 days in the past through 365 days in the future, and
+reconciles updates and removed events by their stable Google identity. This
+keeps Google-owned data distinct and leaves existing local Events untouched.
 
 ## AI
 AI is not required for the core application.

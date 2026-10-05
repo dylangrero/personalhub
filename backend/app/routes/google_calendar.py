@@ -1,14 +1,21 @@
-from fastapi import APIRouter, HTTPException, Query, status
-from fastapi.responses import RedirectResponse
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
+
+from app.database import get_db
 from app.schemas.google_calendar import (
     GoogleCalendarConnectionResponse,
     GoogleCalendarDisconnectResponse,
+    GoogleCalendarEventResponse,
     GoogleCalendarStatus,
+    GoogleCalendarSyncResult,
 )
-from app.services import google_calendar_service
+from app.services import google_calendar_service, google_calendar_sync_service
 
 router = APIRouter(prefix="/integrations/google-calendar", tags=["google-calendar"])
+DatabaseSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/status", response_model=GoogleCalendarStatus)
@@ -71,3 +78,31 @@ def disconnect() -> GoogleCalendarDisconnectResponse:
         ) from error
 
     return GoogleCalendarDisconnectResponse(status="disconnected")
+
+
+@router.post("/sync", response_model=GoogleCalendarSyncResult)
+def sync_google_calendar(db: DatabaseSession) -> GoogleCalendarSyncResult:
+    try:
+        return google_calendar_sync_service.sync_google_calendar(db)
+    except google_calendar_service.GoogleCalendarConfigurationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(error),
+        ) from error
+    except google_calendar_service.GoogleCalendarNotConnectedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error
+    except google_calendar_service.GoogleCalendarApiError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
+
+
+@router.get("/events", response_model=list[GoogleCalendarEventResponse])
+def list_google_calendar_events(
+    db: DatabaseSession,
+) -> list[GoogleCalendarEventResponse]:
+    return google_calendar_sync_service.get_active_google_events(db)
