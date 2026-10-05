@@ -6,6 +6,8 @@ from app.models.task import TaskPriority, TaskStatus
 
 
 class TaskCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     title: str = Field(min_length=1, max_length=255)
     category: str = Field(min_length=1, max_length=100)
     priority: TaskPriority = TaskPriority.MEDIUM
@@ -14,6 +16,8 @@ class TaskCreate(BaseModel):
 
 
 class TaskUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     title: str | None = Field(default=None, min_length=1, max_length=255)
     category: str | None = Field(default=None, min_length=1, max_length=100)
     priority: TaskPriority | None = None

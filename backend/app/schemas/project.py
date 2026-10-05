@@ -6,6 +6,8 @@ from app.models.project import ProjectStatus
 
 
 class ProjectCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     name: str = Field(min_length=1, max_length=255)
     description: str = Field(min_length=1)
     status: ProjectStatus = ProjectStatus.PLANNING
@@ -15,6 +17,8 @@ class ProjectCreate(BaseModel):
 
 
 class ProjectUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, min_length=1)
     status: ProjectStatus | None = None

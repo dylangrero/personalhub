@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 
-import { fetchProjects } from './services/projects'
-import { fetchTasks, updateTask } from './services/tasks'
+import { ProjectForm, type ProjectFormValues } from './components/ProjectForm'
+import { TaskForm, type TaskFormValues } from './components/TaskForm'
+import { createProject, deleteProject, fetchProjects, updateProject } from './services/projects'
+import { createTask, deleteTask, fetchTasks, updateTask } from './services/tasks'
 import type { Project } from './types/project'
 import type { Task } from './types/task'
 
@@ -121,6 +123,10 @@ function PriorityTasks() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [updatingTaskId, setUpdatingTaskId] = useState<number | null>(null)
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
+  const [confirmingDeleteTaskId, setConfirmingDeleteTaskId] = useState<number | null>(null)
+  const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null)
+  const [isAddingTask, setIsAddingTask] = useState(false)
 
   useEffect(() => {
     let isCurrent = true
@@ -171,59 +177,187 @@ function PriorityTasks() {
     }
   }
 
+  async function addTask(values: TaskFormValues) {
+    setError(null)
+
+    try {
+      const createdTask = await createTask({ ...values, status: 'To do' })
+      setTasks((currentTasks) => [...currentTasks, createdTask])
+      setIsAddingTask(false)
+    } catch (requestError) {
+      setError('The task could not be created. Please try again.')
+      throw requestError
+    }
+  }
+
+  async function editTask(taskId: number, values: TaskFormValues) {
+    setError(null)
+
+    try {
+      const updatedTask = await updateTask(taskId, values)
+      setTasks((currentTasks) =>
+        currentTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)),
+      )
+      setEditingTaskId(null)
+    } catch (requestError) {
+      setError('The task could not be saved. Please try again.')
+      throw requestError
+    }
+  }
+
+  async function removeTask(taskId: number) {
+    setDeletingTaskId(taskId)
+    setError(null)
+
+    try {
+      await deleteTask(taskId)
+      setTasks((currentTasks) => currentTasks.filter((task) => task.id !== taskId))
+      setConfirmingDeleteTaskId(null)
+    } catch {
+      setError('The task could not be deleted. Please try again.')
+    } finally {
+      setDeletingTaskId(null)
+    }
+  }
+
   return (
-    <section className="border border-white/10 bg-white/[0.025] p-5 sm:p-6 lg:p-7">
+    <section
+      aria-busy={isLoading}
+      className="border border-white/10 bg-white/[0.025] p-5 sm:p-6 lg:p-7"
+    >
       <SectionHeading
         eyebrow="Focus"
         title="Priority tasks"
         meta={isLoading ? 'Loading' : `${remainingTaskCount} remaining`}
       />
+      {!isLoading && (
+        <div className="flex justify-end border-b border-white/[0.07] py-3">
+          <button
+            type="button"
+            onClick={() => {
+              setEditingTaskId(null)
+              setIsAddingTask((isOpen) => !isOpen)
+            }}
+            className="cursor-pointer text-xs font-medium text-amber-200 transition-colors hover:text-amber-100"
+          >
+            {isAddingTask ? 'Close' : '+ Add task'}
+          </button>
+        </div>
+      )}
+      {isAddingTask && (
+        <TaskForm
+          submitLabel="Add task"
+          onSubmit={addTask}
+          onCancel={() => setIsAddingTask(false)}
+        />
+      )}
       <div className="mt-2">
         {isLoading && (
-          <p className="py-5 text-sm text-zinc-500">Loading tasks…</p>
+          <p role="status" className="py-5 text-sm text-zinc-500">Loading tasks…</p>
         )}
         {!isLoading && error && tasks.length === 0 && (
-          <p className="py-5 text-sm leading-6 text-rose-300">{error}</p>
+          <p role="alert" className="py-5 text-sm leading-6 text-rose-300">{error}</p>
         )}
         {!isLoading && !error && tasks.length === 0 && (
           <p className="py-5 text-sm text-zinc-500">No priority tasks yet.</p>
         )}
         {error && tasks.length > 0 && (
-          <p className="border-b border-white/[0.07] py-3 text-xs text-rose-300">{error}</p>
+          <p role="alert" className="border-b border-white/[0.07] py-3 text-xs text-rose-300">{error}</p>
         )}
         {tasks.map((task, index) => (
-          <article
-            key={task.id}
-            className="group flex items-start gap-4 border-b border-white/[0.07] py-4 last:border-b-0"
-          >
-            <button
-              type="button"
-              aria-label={`Mark ${task.title} ${task.status === 'Done' ? 'to do' : 'complete'}`}
-              disabled={updatingTaskId === task.id}
-              onClick={() => void toggleTaskStatus(task)}
-              className="mt-0.5 grid h-5 w-5 shrink-0 cursor-pointer place-items-center border border-zinc-600 transition-colors hover:border-amber-300 disabled:cursor-wait disabled:opacity-50"
-            >
-              <span
-                className={`h-1.5 w-1.5 transition-colors group-hover:bg-amber-300 ${task.status === 'Done' ? 'bg-amber-300' : 'bg-transparent'}`}
+          <article key={task.id} className="border-b border-white/[0.07] last:border-b-0">
+            {editingTaskId === task.id ? (
+              <TaskForm
+                initialValues={{
+                  title: task.title,
+                  category: task.category,
+                  priority: task.priority,
+                  dueDate: task.dueDate,
+                }}
+                submitLabel="Save changes"
+                onSubmit={(values) => editTask(task.id, values)}
+                onCancel={() => setEditingTaskId(null)}
               />
-            </button>
-            <div className="min-w-0 flex-1">
-              <h3
-                className={`text-sm font-medium ${task.status === 'Done' ? 'text-zinc-500 line-through' : 'text-zinc-200'}`}
-              >
-                {task.title}
-              </h3>
-              <p className="mt-1 text-xs text-zinc-500">{task.category}</p>
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <span
-                className={`h-1.5 w-1.5 ${task.priority === 'High' ? 'bg-rose-300' : 'bg-zinc-600'}`}
-              />
-              <span className="hidden text-[0.65rem] tracking-wider text-zinc-500 uppercase sm:inline">
-                {task.priority}
-              </span>
-            </div>
-            <span className="font-mono text-[0.65rem] text-zinc-700">0{index + 1}</span>
+            ) : (
+              <div className="group flex items-start gap-4 py-4">
+                <button
+                  type="button"
+                  aria-label={`Mark ${task.title} ${task.status === 'Done' ? 'to do' : 'complete'}`}
+                  disabled={updatingTaskId === task.id || deletingTaskId === task.id}
+                  onClick={() => void toggleTaskStatus(task)}
+                  className="mt-0.5 grid h-5 w-5 shrink-0 cursor-pointer place-items-center border border-zinc-600 transition-colors hover:border-amber-300 disabled:cursor-wait disabled:opacity-50"
+                >
+                  <span
+                    className={`h-1.5 w-1.5 transition-colors group-hover:bg-amber-300 ${task.status === 'Done' ? 'bg-amber-300' : 'bg-transparent'}`}
+                  />
+                </button>
+                <div className="min-w-0 flex-1">
+                  <h3
+                    className={`text-sm font-medium ${task.status === 'Done' ? 'text-zinc-500 line-through' : 'text-zinc-200'}`}
+                  >
+                    {task.title}
+                  </h3>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {task.category}{task.dueDate ? ` · Due ${task.dueDate}` : ''}
+                  </p>
+                  <div className="mt-2 flex gap-3 text-[0.65rem]">
+                    <button
+                      type="button"
+                      aria-label={`Edit ${task.title}`}
+                      onClick={() => {
+                        setIsAddingTask(false)
+                        setEditingTaskId(task.id)
+                      }}
+                      className="cursor-pointer text-zinc-600 transition-colors hover:text-zinc-300"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Delete ${task.title}`}
+                      onClick={() => setConfirmingDeleteTaskId(task.id)}
+                      className="cursor-pointer text-zinc-600 transition-colors hover:text-rose-300"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <span
+                    className={`h-1.5 w-1.5 ${task.priority === 'High' ? 'bg-rose-300' : 'bg-zinc-600'}`}
+                  />
+                  <span className="hidden text-[0.65rem] tracking-wider text-zinc-500 uppercase sm:inline">
+                    {task.priority}
+                  </span>
+                </div>
+                <span className="font-mono text-[0.65rem] text-zinc-700">0{index + 1}</span>
+              </div>
+            )}
+            {confirmingDeleteTaskId === task.id && (
+              <div className="flex items-center justify-between gap-3 border-t border-white/[0.07] py-3 text-xs">
+                <span className="text-rose-200">Delete this task?</span>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    aria-label={`Cancel deleting ${task.title}`}
+                    onClick={() => setConfirmingDeleteTaskId(null)}
+                    disabled={deletingTaskId === task.id}
+                    className="cursor-pointer text-zinc-500 hover:text-zinc-200 disabled:cursor-wait disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Confirm deleting ${task.title}`}
+                    onClick={() => void removeTask(task.id)}
+                    disabled={deletingTaskId === task.id}
+                    className="cursor-pointer text-rose-300 hover:text-rose-200 disabled:cursor-wait disabled:opacity-50"
+                  >
+                    {deletingTaskId === task.id ? 'Deleting…' : 'Confirm delete'}
+                  </button>
+                </div>
+              </div>
+            )}
           </article>
         ))}
       </div>
@@ -235,6 +369,10 @@ function ActiveProjects() {
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [editingProjectId, setEditingProjectId] = useState<number | null>(null)
+  const [confirmingDeleteProjectId, setConfirmingDeleteProjectId] = useState<number | null>(null)
+  const [deletingProjectId, setDeletingProjectId] = useState<number | null>(null)
+  const [isAddingProject, setIsAddingProject] = useState(false)
 
   useEffect(() => {
     let isCurrent = true
@@ -264,45 +402,190 @@ function ActiveProjects() {
 
   const activeProjectCount = projects.filter((project) => project.status !== 'Completed').length
 
+  async function addProject(values: ProjectFormValues) {
+    setError(null)
+
+    try {
+      const createdProject = await createProject(values)
+      setProjects((currentProjects) => [...currentProjects, createdProject])
+      setIsAddingProject(false)
+    } catch (requestError) {
+      setError('The project could not be created. Please try again.')
+      throw requestError
+    }
+  }
+
+  async function editProject(projectId: number, values: ProjectFormValues) {
+    setError(null)
+
+    try {
+      const updatedProject = await updateProject(projectId, values)
+      setProjects((currentProjects) =>
+        currentProjects.map((project) =>
+          project.id === updatedProject.id ? updatedProject : project,
+        ),
+      )
+      setEditingProjectId(null)
+    } catch (requestError) {
+      setError('The project could not be saved. Please try again.')
+      throw requestError
+    }
+  }
+
+  async function removeProject(projectId: number) {
+    setDeletingProjectId(projectId)
+    setError(null)
+
+    try {
+      await deleteProject(projectId)
+      setProjects((currentProjects) =>
+        currentProjects.filter((project) => project.id !== projectId),
+      )
+      setConfirmingDeleteProjectId(null)
+    } catch {
+      setError('The project could not be deleted. Please try again.')
+    } finally {
+      setDeletingProjectId(null)
+    }
+  }
+
   return (
-    <section className="border-t border-white/10 pt-6">
+    <section aria-busy={isLoading} className="border-t border-white/10 pt-6">
       <SectionHeading
         eyebrow="Momentum"
         title="Active projects"
         meta={isLoading ? 'Loading' : `${activeProjectCount} in motion`}
       />
+      {!isLoading && (
+        <div className="flex justify-end border-b border-white/[0.07] py-3">
+          <button
+            type="button"
+            onClick={() => {
+              setEditingProjectId(null)
+              setIsAddingProject((isOpen) => !isOpen)
+            }}
+            className="cursor-pointer text-xs font-medium text-amber-200 transition-colors hover:text-amber-100"
+          >
+            {isAddingProject ? 'Close' : '+ Add project'}
+          </button>
+        </div>
+      )}
+      {isAddingProject && (
+        <div className="border-x border-b border-white/10 bg-[#0d0f12] p-5 sm:p-6">
+          <ProjectForm
+            submitLabel="Add project"
+            onSubmit={addProject}
+            onCancel={() => setIsAddingProject(false)}
+          />
+        </div>
+      )}
       <div className="mt-5 grid gap-px overflow-hidden border border-white/10 bg-white/10 md:grid-cols-3">
         {isLoading && (
-          <p className="bg-[#0d0f12] p-5 text-sm text-zinc-500 sm:p-6 md:col-span-3">
+          <p role="status" className="bg-[#0d0f12] p-5 text-sm text-zinc-500 sm:p-6 md:col-span-3">
             Loading projects…
           </p>
         )}
-        {!isLoading && error && (
-          <p className="bg-[#0d0f12] p-5 text-sm text-rose-300 sm:p-6 md:col-span-3">
+        {!isLoading && error && projects.length === 0 && (
+          <p role="alert" className="bg-[#0d0f12] p-5 text-sm text-rose-300 sm:p-6 md:col-span-3">
             {error}
           </p>
+        )}
+        {error && projects.length > 0 && (
+          <p role="alert" className="bg-[#0d0f12] p-4 text-xs text-rose-300 md:col-span-3">{error}</p>
         )}
         {!isLoading && !error && projects.length === 0 && (
           <p className="bg-[#0d0f12] p-5 text-sm text-zinc-500 sm:p-6 md:col-span-3">
             No active projects yet.
           </p>
         )}
-        {!isLoading && !error && projects.map((project) => (
-          <article key={project.id} className="bg-[#0d0f12] p-5 sm:p-6">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="font-medium text-zinc-100">{project.name}</h3>
-                <p className="mt-1 text-xs text-zinc-500">{project.description}</p>
+        {!isLoading && projects.map((project) => (
+          <article
+            key={project.id}
+            className={`bg-[#0d0f12] p-5 sm:p-6 ${editingProjectId === project.id ? 'md:col-span-3' : ''}`}
+          >
+            {editingProjectId === project.id ? (
+              <ProjectForm
+                initialValues={{
+                  name: project.name,
+                  description: project.description,
+                  status: project.status,
+                  progress: project.progress,
+                  nextAction: project.nextAction,
+                  deadline: project.deadline,
+                }}
+                submitLabel="Save changes"
+                onSubmit={(values) => editProject(project.id, values)}
+                onCancel={() => setEditingProjectId(null)}
+              />
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-medium text-zinc-100">{project.name}</h3>
+                    <p className="mt-1 text-xs text-zinc-500">{project.description}</p>
+                  </div>
+                  <span className="font-mono text-xs text-zinc-600">{project.progress}%</span>
+                </div>
+                <div className="mt-7 h-px bg-white/10">
+                  <div className="h-px bg-amber-300" style={{ width: `${project.progress}%` }} />
+                </div>
+                <div className="mt-5 flex items-center justify-between gap-4 text-xs">
+                  <span className="text-zinc-600">Next</span>
+                  <span className="text-right text-zinc-300">{project.nextAction}</span>
+                </div>
+                <div className="mt-5 flex items-center justify-between gap-4 border-t border-white/[0.07] pt-4 text-[0.65rem]">
+                  <span className="text-zinc-600">
+                    {project.status}{project.deadline ? ` · ${project.deadline}` : ''}
+                  </span>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      aria-label={`Edit ${project.name}`}
+                      onClick={() => {
+                        setIsAddingProject(false)
+                        setEditingProjectId(project.id)
+                      }}
+                      className="cursor-pointer text-zinc-600 transition-colors hover:text-zinc-300"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Delete ${project.name}`}
+                      onClick={() => setConfirmingDeleteProjectId(project.id)}
+                      className="cursor-pointer text-zinc-600 transition-colors hover:text-rose-300"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+            {confirmingDeleteProjectId === project.id && (
+              <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/[0.07] pt-4 text-xs">
+                <span className="text-rose-200">Delete this project?</span>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    aria-label={`Cancel deleting ${project.name}`}
+                    onClick={() => setConfirmingDeleteProjectId(null)}
+                    disabled={deletingProjectId === project.id}
+                    className="cursor-pointer text-zinc-500 hover:text-zinc-200 disabled:cursor-wait disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Confirm deleting ${project.name}`}
+                    onClick={() => void removeProject(project.id)}
+                    disabled={deletingProjectId === project.id}
+                    className="cursor-pointer text-rose-300 hover:text-rose-200 disabled:cursor-wait disabled:opacity-50"
+                  >
+                    {deletingProjectId === project.id ? 'Deleting…' : 'Confirm delete'}
+                  </button>
+                </div>
               </div>
-              <span className="font-mono text-xs text-zinc-600">{project.progress}%</span>
-            </div>
-            <div className="mt-7 h-px bg-white/10">
-              <div className="h-px bg-amber-300" style={{ width: `${project.progress}%` }} />
-            </div>
-            <div className="mt-5 flex items-center justify-between gap-4 text-xs">
-              <span className="text-zinc-600">Next</span>
-              <span className="text-right text-zinc-300">{project.nextAction}</span>
-            </div>
+            )}
           </article>
         ))}
       </div>

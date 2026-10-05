@@ -4,8 +4,7 @@ import type {
   ProjectStatus,
   ProjectUpdate,
 } from '../types/project'
-
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
+import { apiRequest } from './api'
 
 type ProjectApiResponse = {
   id: number
@@ -51,23 +50,13 @@ function toApiPayload(project: ProjectCreate | ProjectUpdate): ProjectApiPayload
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, init)
-
-  if (!response.ok) {
-    throw new Error(`Project API request failed with status ${response.status}`)
-  }
-
-  return response.json() as Promise<T>
-}
-
 export async function fetchProjects(): Promise<Project[]> {
-  const projects = await request<ProjectApiResponse[]>('/projects')
+  const projects = await apiRequest<ProjectApiResponse[]>('/projects')
   return projects.map(fromApiProject)
 }
 
 export async function createProject(project: ProjectCreate): Promise<Project> {
-  const createdProject = await request<ProjectApiResponse>('/projects', {
+  const createdProject = await apiRequest<ProjectApiResponse>('/projects', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(toApiPayload(project)),
@@ -77,7 +66,7 @@ export async function createProject(project: ProjectCreate): Promise<Project> {
 }
 
 export async function updateProject(id: number, updates: ProjectUpdate): Promise<Project> {
-  const updatedProject = await request<ProjectApiResponse>(`/projects/${id}`, {
+  const updatedProject = await apiRequest<ProjectApiResponse>(`/projects/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(toApiPayload(updates)),
@@ -87,5 +76,5 @@ export async function updateProject(id: number, updates: ProjectUpdate): Promise
 }
 
 export async function deleteProject(id: number): Promise<void> {
-  await request<{ status: string }>(`/projects/${id}`, { method: 'DELETE' })
+  await apiRequest<{ status: string }>(`/projects/${id}`, { method: 'DELETE' })
 }

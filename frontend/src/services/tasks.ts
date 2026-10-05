@@ -1,6 +1,5 @@
 import type { Task, TaskCreate, TaskPriority, TaskStatus, TaskUpdate } from '../types/task'
-
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
+import { apiRequest } from './api'
 
 type TaskApiResponse = {
   id: number
@@ -42,23 +41,13 @@ function toApiPayload(task: TaskCreate | TaskUpdate): TaskApiPayload {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, init)
-
-  if (!response.ok) {
-    throw new Error(`Task API request failed with status ${response.status}`)
-  }
-
-  return response.json() as Promise<T>
-}
-
 export async function fetchTasks(): Promise<Task[]> {
-  const tasks = await request<TaskApiResponse[]>('/tasks')
+  const tasks = await apiRequest<TaskApiResponse[]>('/tasks')
   return tasks.map(fromApiTask)
 }
 
 export async function createTask(task: TaskCreate): Promise<Task> {
-  const createdTask = await request<TaskApiResponse>('/tasks', {
+  const createdTask = await apiRequest<TaskApiResponse>('/tasks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(toApiPayload(task)),
@@ -68,7 +57,7 @@ export async function createTask(task: TaskCreate): Promise<Task> {
 }
 
 export async function updateTask(id: number, updates: TaskUpdate): Promise<Task> {
-  const updatedTask = await request<TaskApiResponse>(`/tasks/${id}`, {
+  const updatedTask = await apiRequest<TaskApiResponse>(`/tasks/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(toApiPayload(updates)),
@@ -78,5 +67,5 @@ export async function updateTask(id: number, updates: TaskUpdate): Promise<Task>
 }
 
 export async function deleteTask(id: number): Promise<void> {
-  await request<{ status: string }>(`/tasks/${id}`, { method: 'DELETE' })
+  await apiRequest<{ status: string }>(`/tasks/${id}`, { method: 'DELETE' })
 }

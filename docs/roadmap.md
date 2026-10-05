@@ -1,12 +1,12 @@
 # Personal Hub Roadmap
 
 ## V1
-- [ ] Dashboard shell
-- [ ] Tasks
-- [ ] Projects
+- [x] Dashboard shell
+- [x] Tasks
+- [x] Projects
 - [ ] Calendar/events
 - [ ] Today view
-- [ ] Connect dashboard to real data
+- [x] Connect dashboard to real data
 - [ ] V1 polish
 
 ## V2
