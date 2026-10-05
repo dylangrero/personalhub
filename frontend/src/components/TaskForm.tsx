@@ -22,7 +22,7 @@ const emptyTask: TaskFormValues = {
 }
 
 const fieldClasses =
-  'min-w-0 border border-white/10 bg-[#0a0b0d] px-3 py-2 text-sm text-zinc-200 outline-none transition-colors placeholder:text-zinc-700 focus:border-amber-300/60'
+  'min-w-0 border border-white/10 bg-[#0a0b0d] px-3 py-2 text-sm text-zinc-200 outline-none transition-colors placeholder:text-zinc-700 focus:border-[#00ffd4]/60'
 
 export function TaskForm({
   initialValues = emptyTask,
@@ -117,7 +117,7 @@ export function TaskForm({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="cursor-pointer border border-amber-300/50 px-3 py-2 text-xs font-medium text-amber-100 transition-colors hover:border-amber-300 hover:bg-amber-300/10 disabled:cursor-wait disabled:opacity-50"
+          className="cursor-pointer border border-[#00ffd4]/50 px-3 py-2 text-xs font-medium text-[#8fffea] transition-colors hover:border-[#00ffd4] hover:bg-[#00ffd4]/10 disabled:cursor-wait disabled:opacity-50"
         >
           {isSubmitting ? 'Saving…' : submitLabel}
         </button>

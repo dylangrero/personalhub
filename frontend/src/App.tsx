@@ -10,9 +10,17 @@ import { fetchToday } from './services/today'
 import type { Event as CalendarEvent } from './types/event'
 import type { Project } from './types/project'
 import type { Task } from './types/task'
-import type { Today } from './types/today'
+import type { Today, TodaySummary } from './types/today'
 
-const scheduleAccentClasses = ['bg-amber-300', 'bg-sky-300', 'bg-emerald-300']
+const scheduleAccentClasses = ['bg-[#00ffd4]', 'bg-sky-300', 'bg-violet-300']
+
+const emptyTodaySummary: TodaySummary = {
+  eventCount: 0,
+  dueTaskCount: 0,
+  overdueTaskCount: 0,
+  highPriorityTaskCount: 0,
+  activeProjectCount: 0,
+}
 
 function formatToday() {
   const today = new Date()
@@ -200,7 +208,7 @@ function Schedule({ events, todayDate, isLoading, loadError, refreshToday }: Sch
               setConfirmingDeleteEventId(null)
               setIsAddingEvent((isOpen) => !isOpen)
             }}
-            className="cursor-pointer text-xs font-medium text-amber-200 transition-colors hover:text-amber-100"
+            className="cursor-pointer text-xs font-medium text-[#00ffd4] transition-colors hover:text-[#8fffea]"
           >
             {isAddingEvent ? 'Close' : '+ Add event'}
           </button>
@@ -467,7 +475,7 @@ function PriorityTasks({
               setEditingTaskId(null)
               setIsAddingTask((isOpen) => !isOpen)
             }}
-            className="cursor-pointer text-xs font-medium text-amber-200 transition-colors hover:text-amber-100"
+            className="cursor-pointer text-xs font-medium text-[#00ffd4] transition-colors hover:text-[#8fffea]"
           >
             {isAddingTask ? 'Close' : '+ Add task'}
           </button>
@@ -499,7 +507,7 @@ function PriorityTasks({
           <p role="alert" className="border-b border-white/[0.07] py-3 text-xs text-rose-300">{sectionError}</p>
         )}
         {notice && (
-          <p role="status" className="border-b border-white/[0.07] py-3 text-xs text-amber-200">
+          <p role="status" className="border-b border-white/[0.07] py-3 text-xs text-[#00ffd4]">
             {notice}
           </p>
         )}
@@ -524,10 +532,10 @@ function PriorityTasks({
                   aria-label={`Mark ${task.title} ${task.status === 'Done' ? 'to do' : 'complete'}`}
                   disabled={updatingTaskId === task.id || deletingTaskId === task.id}
                   onClick={() => void toggleTaskStatus(task)}
-                  className="mt-0.5 grid h-5 w-5 shrink-0 cursor-pointer place-items-center border border-zinc-600 transition-colors hover:border-amber-300 disabled:cursor-wait disabled:opacity-50"
+                  className="mt-0.5 grid h-5 w-5 shrink-0 cursor-pointer place-items-center border border-zinc-600 transition-colors hover:border-[#00ffd4] disabled:cursor-wait disabled:opacity-50"
                 >
                   <span
-                    className={`h-1.5 w-1.5 transition-colors group-hover:bg-amber-300 ${task.status === 'Done' ? 'bg-amber-300' : 'bg-transparent'}`}
+                    className={`h-1.5 w-1.5 transition-colors group-hover:bg-[#00ffd4] ${task.status === 'Done' ? 'bg-[#00ffd4]' : 'bg-transparent'}`}
                   />
                 </button>
                 <div className="min-w-0 flex-1">
@@ -537,7 +545,7 @@ function PriorityTasks({
                     {task.title}
                   </h3>
                   <p className="mt-1 text-xs text-zinc-500">
-                    <span className={context === 'Overdue' ? 'text-rose-300' : 'text-amber-200'}>
+                    <span className={context === 'Overdue' ? 'text-rose-300' : 'text-[#00ffd4]'}>
                       {context}
                     </span>
                     {` · ${task.category}`}{task.dueDate ? ` · Due ${task.dueDate}` : ''}
@@ -687,7 +695,7 @@ function ActiveProjects({ projects, isLoading, loadError, refreshToday }: Active
               setEditingProjectId(null)
               setIsAddingProject((isOpen) => !isOpen)
             }}
-            className="cursor-pointer text-xs font-medium text-amber-200 transition-colors hover:text-amber-100"
+            className="cursor-pointer text-xs font-medium text-[#00ffd4] transition-colors hover:text-[#8fffea]"
           >
             {isAddingProject ? 'Close' : '+ Add project'}
           </button>
@@ -702,29 +710,29 @@ function ActiveProjects({ projects, isLoading, loadError, refreshToday }: Active
           />
         </div>
       )}
-      <div className="mt-5 grid gap-px overflow-hidden border border-white/10 bg-white/10 md:grid-cols-3">
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {isLoading && (
-          <p role="status" className="bg-[#0d0f12] p-5 text-sm text-zinc-500 sm:p-6 md:col-span-3">
+          <p role="status" className="border border-white/10 bg-[#0d0f12] p-5 text-sm text-zinc-500 sm:col-span-2 sm:p-6 xl:col-span-3">
             Loading projects…
           </p>
         )}
         {!isLoading && sectionError && projects.length === 0 && (
-          <p role="alert" className="bg-[#0d0f12] p-5 text-sm text-rose-300 sm:p-6 md:col-span-3">
+          <p role="alert" className="border border-white/10 bg-[#0d0f12] p-5 text-sm text-rose-300 sm:col-span-2 sm:p-6 xl:col-span-3">
             {sectionError}
           </p>
         )}
         {sectionError && projects.length > 0 && (
-          <p role="alert" className="bg-[#0d0f12] p-4 text-xs text-rose-300 md:col-span-3">{sectionError}</p>
+          <p role="alert" className="border border-white/10 bg-[#0d0f12] p-4 text-xs text-rose-300 sm:col-span-2 xl:col-span-3">{sectionError}</p>
         )}
         {!isLoading && !sectionError && projects.length === 0 && (
-          <p className="bg-[#0d0f12] p-5 text-sm text-zinc-500 sm:p-6 md:col-span-3">
+          <p className="border border-white/10 bg-[#0d0f12] p-5 text-sm text-zinc-500 sm:col-span-2 sm:p-6 xl:col-span-3">
             No active projects yet.
           </p>
         )}
         {!isLoading && projects.map((project) => (
           <article
             key={project.id}
-            className={`bg-[#0d0f12] p-5 sm:p-6 ${editingProjectId === project.id ? 'md:col-span-3' : ''}`}
+            className={`border border-white/10 bg-[#0d0f12] p-5 sm:p-6 ${editingProjectId === project.id ? 'sm:col-span-2 xl:col-span-3' : ''}`}
           >
             {editingProjectId === project.id ? (
               <ProjectForm
@@ -750,7 +758,7 @@ function ActiveProjects({ projects, isLoading, loadError, refreshToday }: Active
                   <span className="font-mono text-xs text-zinc-600">{project.progress}%</span>
                 </div>
                 <div className="mt-7 h-px bg-white/10">
-                  <div className="h-px bg-amber-300" style={{ width: `${project.progress}%` }} />
+                  <div className="h-px bg-[#00ffd4]" style={{ width: `${project.progress}%` }} />
                 </div>
                 <div className="mt-5 flex items-center justify-between gap-4 text-xs">
                   <span className="text-zinc-600">Next</span>
@@ -816,28 +824,73 @@ function ActiveProjects({ projects, isLoading, loadError, refreshToday }: Active
   )
 }
 
-function DailyBrief() {
+type DailyBriefProps = {
+  summary: TodaySummary
+  events: CalendarEvent[]
+  isLoading: boolean
+  loadError: string | null
+}
+
+function DailyBrief({ summary, events, isLoading, loadError }: DailyBriefProps) {
+  const nextEvent = events[0]
+  const priorityTaskCount =
+    summary.dueTaskCount + summary.overdueTaskCount + summary.highPriorityTaskCount
+  const briefTitle = summary.overdueTaskCount > 0
+    ? 'Attention needed'
+    : priorityTaskCount > 0 || summary.eventCount > 0
+      ? 'Today at a glance'
+      : 'A clear runway'
+
   return (
-    <aside className="relative overflow-hidden border border-amber-200/20 bg-amber-100/[0.045] p-5 sm:p-6 lg:p-7">
-      <div className="absolute top-0 left-0 h-px w-24 bg-amber-300" />
-      <SectionHeading eyebrow="Daily brief" title="A clear runway" meta="08:02" />
-      <p className="mt-6 text-base leading-7 text-zinc-300">
-        Your morning is intentionally light. Use the first focus block to settle the Personal Hub
-        structure, then step away before the afternoon.
-      </p>
-      <div className="mt-7 grid grid-cols-2 gap-6 border-t border-white/10 pt-5">
-        <div>
-          <p className="text-2xl font-light tracking-tight text-zinc-100">12°</p>
-          <p className="mt-1 text-xs text-zinc-500">Cloudy · London</p>
-        </div>
-        <div>
-          <p className="text-2xl font-light tracking-tight text-zinc-100">4h 45m</p>
-          <p className="mt-1 text-xs text-zinc-500">Open time</p>
-        </div>
-      </div>
-      <p className="mt-6 border-l border-amber-300/50 pl-4 text-xs leading-5 text-zinc-500">
-        One thing at a time. The important work already has space.
-      </p>
+    <aside aria-busy={isLoading} className="relative overflow-hidden border border-[#00ffd4]/20 bg-[#00ffd4]/[0.025] p-5 sm:p-6 lg:p-7">
+      <div className="absolute top-0 left-0 h-px w-24 bg-[#00ffd4]" />
+      <SectionHeading
+        eyebrow="Daily brief"
+        title={isLoading ? 'Gathering today' : briefTitle}
+        meta={isLoading ? 'Loading' : `${summary.eventCount + priorityTaskCount} items`}
+      />
+      {isLoading && (
+        <p role="status" className="mt-6 text-sm text-zinc-500">Building today’s brief…</p>
+      )}
+      {!isLoading && loadError && (
+        <p role="alert" className="mt-6 text-sm leading-6 text-rose-300">{loadError}</p>
+      )}
+      {!isLoading && !loadError && (
+        <>
+          <div className="mt-6 grid grid-cols-2 gap-x-5 gap-y-4 border-b border-white/10 pb-6">
+            {[
+              ['Events', summary.eventCount],
+              ['Due today', summary.dueTaskCount],
+              ['Overdue', summary.overdueTaskCount],
+              ['High priority', summary.highPriorityTaskCount],
+              ['Active projects', summary.activeProjectCount],
+            ].map(([label, count]) => (
+              <div key={label}>
+                <p className={`font-mono text-xl ${label === 'Overdue' && Number(count) > 0 ? 'text-rose-300' : 'text-zinc-100'}`}>
+                  {count}
+                </p>
+                <p className="mt-1 text-xs text-zinc-500">{label}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 border-l border-[#00ffd4]/50 pl-4">
+            <p className="text-[0.65rem] font-semibold tracking-[0.18em] text-[#00ffd4] uppercase">
+              Next event
+            </p>
+            {nextEvent ? (
+              <div className="mt-2">
+                <p className="text-sm font-medium text-zinc-200">{nextEvent.title}</p>
+                <p className="mt-1 text-xs leading-5 text-zinc-500">
+                  {formatEventTime(nextEvent.startTime)}–{formatEventTime(nextEvent.endTime)}
+                  {nextEvent.location ? ` · ${nextEvent.location}` : ''}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs leading-5 text-zinc-500">No events scheduled today.</p>
+            )}
+          </div>
+        </>
+      )}
     </aside>
   )
 }
@@ -892,13 +945,13 @@ function App() {
       <header className="border-b border-white/10">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between px-5 py-4 sm:px-8 lg:px-12">
           <div className="flex items-center gap-3">
-            <span className="grid h-8 w-8 place-items-center border border-amber-300/40 text-[0.65rem] font-bold tracking-widest text-amber-200">
+            <span className="grid h-8 w-8 place-items-center border border-[#00ffd4]/40 text-[0.65rem] font-bold tracking-widest text-[#00ffd4]">
               PH
             </span>
             <span className="text-sm font-medium tracking-wide text-zinc-300">Personal Hub</span>
           </div>
           <nav aria-label="Primary navigation" className="hidden items-center gap-7 text-xs text-zinc-500 sm:flex">
-            <a href="#today" className="border-b border-amber-300 pb-1 text-zinc-100">Today</a>
+            <a href="#today" className="border-b border-[#00ffd4] pb-1 text-zinc-100">Today</a>
             <a href="#tasks" className="pb-1 transition-colors hover:text-zinc-200">Tasks</a>
             <a href="#projects" className="pb-1 transition-colors hover:text-zinc-200">Projects</a>
           </nav>
@@ -912,7 +965,7 @@ function App() {
       <main id="today" className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8 sm:py-14 lg:px-12 lg:py-16">
         <section className="grid gap-8 border-b border-white/10 pb-10 sm:pb-14 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
-            <p className="mb-4 text-[0.65rem] font-semibold tracking-[0.25em] text-amber-200 uppercase">
+            <p className="mb-4 text-[0.65rem] font-semibold tracking-[0.25em] text-[#00ffd4] uppercase">
               Your day at a glance
             </p>
             <h1 className="max-w-3xl text-4xl font-light tracking-[-0.04em] text-white sm:text-5xl lg:text-6xl">
@@ -920,7 +973,7 @@ function App() {
             </h1>
           </div>
           <div className="flex items-center gap-4 lg:flex-col lg:items-end lg:gap-1">
-            <span className="font-mono text-xs tracking-wider text-amber-200">{todayDisplay.shortDate}</span>
+            <span className="font-mono text-xs tracking-wider text-[#00ffd4]">{todayDisplay.shortDate}</span>
             <div className="text-right">
               <p className="text-xl font-medium text-zinc-100">{todayDisplay.day}</p>
               <p className="mt-1 text-xs text-zinc-500">{todayDisplay.date}</p>
@@ -947,7 +1000,12 @@ function App() {
               refreshToday={refreshToday}
             />
           </div>
-          <DailyBrief />
+          <DailyBrief
+            summary={today?.summary ?? emptyTodaySummary}
+            events={today?.events ?? []}
+            isLoading={isTodayLoading}
+            loadError={todayError}
+          />
         </div>
 
         <div id="projects" className="mt-12 sm:mt-16">

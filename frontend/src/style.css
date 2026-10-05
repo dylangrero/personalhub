@@ -32,12 +32,15 @@ a {
 }
 
 button:focus-visible,
-a:focus-visible {
-  outline: 2px solid #d6a85f;
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #00ffd4;
   outline-offset: 3px;
 }
 
 ::selection {
   color: #0a0b0d;
-  background: #d6a85f;
+  background: #00ffd4;
 }
