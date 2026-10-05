@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_database
+from app.routes.events import router as events_router
 from app.routes.projects import router as projects_router
 from app.routes.tasks import router as tasks_router
 
@@ -29,6 +30,7 @@ app.add_middleware(
 )
 app.include_router(tasks_router)
 app.include_router(projects_router)
+app.include_router(events_router)
 
 
 @app.get("/health")
