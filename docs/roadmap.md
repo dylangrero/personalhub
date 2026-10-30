@@ -15,12 +15,13 @@
   - [ ] Daily Brief integration
 - [x] Connect dashboard to real data
 - [ ] V1 polish
+  - [x] Today dashboard v2 design and responsive application shell
 
 ## V2
-- [ ] Google Calendar integration
+- [x] Google Calendar integration
   - [x] OAuth connection foundation
   - [x] Backend event sync/cache foundation
-  - [ ] Dashboard sync controls and presentation
+  - [x] Dashboard sync controls and presentation
 - [ ] Recurring tasks
 - [ ] Better planning tools
 

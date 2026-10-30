@@ -1,4 +1,4 @@
-import type { Event } from './event'
+import type { ScheduleEvent } from './event'
 import type { Project } from './project'
 import type { Task } from './task'
 
@@ -12,7 +12,7 @@ export interface TodaySummary {
 
 export interface Today {
   date: string
-  events: Event[]
+  events: ScheduleEvent[]
   dueTasks: Task[]
   overdueTasks: Task[]
   highPriorityTasks: Task[]
