@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AppShell } from './components/AppShell'
+import { CalendarConnection } from './components/CalendarConnection'
 import { Schedule } from './components/dashboard/Schedule'
 import { PriorityTasks } from './components/dashboard/PriorityTasks'
 import { ActiveProjects } from './components/dashboard/ActiveProjects'
 import {
   DailyFocus,
-  IntentionCard,
+  NextEvent,
   QuickActions,
   Welcome,
   Workload,
@@ -84,7 +85,12 @@ function App() {
   }
 
   return (
-    <AppShell now={now} search={search} onSearch={setSearch}>
+    <AppShell
+      now={now}
+      search={search}
+      onSearch={setSearch}
+      calendarControl={<CalendarConnection refreshToday={refreshToday} />}
+    >
       <Welcome now={now} />
       {todayError && (
         <div className="connection-banner" role="alert">
@@ -114,7 +120,12 @@ function App() {
           onOpen={openAction}
         />
         <Workload today={today} loading={isTodayLoading} error={todayError} />
-        <IntentionCard />
+        <NextEvent
+          events={today?.events ?? []}
+          now={now}
+          loading={isTodayLoading}
+          error={todayError}
+        />
       </div>
       <div className="dashboard-main-grid">
         <Schedule
@@ -148,7 +159,6 @@ function App() {
         />
         <div className="dashboard-rail">
           <QuickActions onOpen={openAction} />
-          <IntentionCard small />
         </div>
       </div>
       <ActiveProjects

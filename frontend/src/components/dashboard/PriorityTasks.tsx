@@ -71,11 +71,7 @@ export function PriorityTasks({
       await updateTask(task.id, {
         status: task.status === 'Done' ? 'To do' : 'Done',
       })
-      setNotice(
-        task.status === 'Done'
-          ? 'Task reopened.'
-          : 'Task complete. One less thing on your mind.'
-      )
+      setNotice(task.status === 'Done' ? 'Task reopened.' : 'Task completed.')
       if (!(await refreshToday())) {
         setError(
           'The task was updated, but Today could not be refreshed. Please reload.'
@@ -190,8 +186,8 @@ export function PriorityTasks({
         empty={tasks.length === 0}
       >
         <Icon name="check" size={28} />
-        <strong>A little breathing room.</strong>
-        <span>No priority tasks right now.</span>
+        <strong>No priority tasks</strong>
+        <span>Overdue, due today, and high-priority tasks appear here.</span>
         <button
           className="text-button accent"
           onClick={() => setIsAddingTask(true)}
@@ -313,8 +309,8 @@ export function PriorityTasks({
       )}
       {!isLoading && tasks.length > 0 && (
         <div className="panel-footer">
-          <span className="connection-dot connected" />
-          {tasks.length} things worth your attention<span>One at a time.</span>
+          {tasks.length}{' '}
+          {tasks.length === 1 ? 'priority task' : 'priority tasks'}
         </div>
       )}
     </section>

@@ -1,12 +1,6 @@
 import { useEffect, useState } from 'react'
 import { EventForm, type EventFormValues } from '../EventForm'
 import { createEvent, deleteEvent, updateEvent } from '../../services/events'
-import {
-  fetchGoogleCalendarStatus,
-  googleCalendarConnectUrl,
-  syncGoogleCalendar,
-  type GoogleCalendarStatus,
-} from '../../services/googleCalendar'
 import type { LocalScheduleEvent, ScheduleEvent } from '../../types/event'
 import {
   Icon,
@@ -53,12 +47,6 @@ export function Schedule({
   >(null)
   const [deletingEventId, setDeletingEventId] = useState<number | null>(null)
   const [isAddingEvent, setIsAddingEvent] = useState(false)
-  const [calendarStatus, setCalendarStatus] =
-    useState<GoogleCalendarStatus | null>(null)
-  const [calendarError, setCalendarError] = useState<string | null>(null)
-  const [calendarFeedback, setCalendarFeedback] = useState<string | null>(null)
-  const [isCalendarStatusLoading, setIsCalendarStatusLoading] = useState(true)
-  const [isSyncingCalendar, setIsSyncingCalendar] = useState(false)
 
   useEffect(() => {
     if (action?.kind === 'event') {
@@ -80,54 +68,6 @@ export function Schedule({
     (total, event) => total + eventDurationMinutes(event),
     0
   )
-
-  useEffect(() => {
-    let isCurrent = true
-
-    fetchGoogleCalendarStatus()
-      .then((status) => {
-        if (isCurrent) {
-          setCalendarStatus(status)
-          setCalendarError(null)
-        }
-      })
-      .catch(() => {
-        if (isCurrent) {
-          setCalendarError('Google Calendar status is unavailable.')
-        }
-      })
-      .finally(() => {
-        if (isCurrent) {
-          setIsCalendarStatusLoading(false)
-        }
-      })
-
-    return () => {
-      isCurrent = false
-    }
-  }, [])
-
-  async function syncCalendar() {
-    if (isSyncingCalendar) return
-
-    setIsSyncingCalendar(true)
-    setCalendarError(null)
-    setCalendarFeedback(null)
-
-    try {
-      const result = await syncGoogleCalendar()
-      const refreshed = await refreshToday()
-      setCalendarFeedback(
-        refreshed
-          ? `${result.fetched} ${result.fetched === 1 ? 'event' : 'events'} synced`
-          : 'Calendar synced. Reload to refresh Today.'
-      )
-    } catch {
-      setCalendarError('Google Calendar could not be synced. Please try again.')
-    } finally {
-      setIsSyncingCalendar(false)
-    }
-  }
 
   async function addEvent(values: EventFormValues) {
     setError(null)
@@ -245,55 +185,6 @@ export function Schedule({
           </button>
         }
       />
-      <div className="calendar-connection">
-        <span
-          className={
-            calendarStatus?.connected
-              ? 'connection-dot connected'
-              : 'connection-dot'
-          }
-        />
-        <span>Google Calendar</span>
-        <span className="connection-state">
-          {isCalendarStatusLoading
-            ? 'Checking…'
-            : calendarStatus?.connected
-              ? 'Connected'
-              : calendarError
-                ? 'Unavailable'
-                : calendarStatus?.configured
-                  ? 'Disconnected'
-                  : 'Not configured'}
-        </span>
-        {calendarStatus?.connected ? (
-          <button
-            className="text-button accent"
-            onClick={() => void syncCalendar()}
-            disabled={isSyncingCalendar}
-          >
-            <Icon
-              name="refresh"
-              size={12}
-              className={isSyncingCalendar ? 'is-spinning' : ''}
-            />
-            {isSyncingCalendar ? 'Syncing…' : 'Sync'}
-          </button>
-        ) : calendarStatus?.configured ? (
-          <a className="text-button accent" href={googleCalendarConnectUrl()}>
-            Connect
-          </a>
-        ) : null}
-      </div>
-      {calendarFeedback && (
-        <p role="status" className="inline-message success-message">
-          {calendarFeedback}
-        </p>
-      )}
-      {calendarError && (
-        <p role="alert" className="inline-message error-message">
-          {calendarError}
-        </p>
-      )}
       {isAddingEvent && (
         <div className="form-surface">
           <EventForm
@@ -309,8 +200,8 @@ export function Schedule({
         empty={events.length === 0}
       >
         <Icon name="calendar" size={28} />
-        <strong>Your day has room.</strong>
-        <span>No events scheduled today.</span>
+        <strong>No events today</strong>
+        <span>Add an event to today’s schedule.</span>
         <button
           className="text-button accent"
           onClick={() => setIsAddingEvent(true)}

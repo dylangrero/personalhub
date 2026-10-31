@@ -151,8 +151,8 @@ export function ActiveProjects({
         empty={projects.length === 0}
       >
         <Icon name="layers" size={28} />
-        <strong>Make space for your next idea.</strong>
-        <span>No active projects yet.</span>
+        <strong>No active projects</strong>
+        <span>Create a project to track its progress.</span>
         <button
           className="text-button accent"
           onClick={() => setIsAddingProject(true)}

@@ -154,42 +154,6 @@ textarea:focus-visible {
   margin-top: auto;
   padding-top: 45px;
 }
-.sidebar-note {
-  position: relative;
-  padding: 23px 18px;
-  border: 1px solid #1a2c31;
-  border-radius: 9px;
-  background: linear-gradient(145deg, #10181d, #06201f55);
-  overflow: hidden;
-}
-.sidebar-note::after {
-  content: '';
-  position: absolute;
-  width: 130px;
-  height: 130px;
-  border: 1px solid #00ffd40d;
-  transform: rotate(-35deg);
-  bottom: -80px;
-  right: -40px;
-}
-.sidebar-note .tiny-label {
-  font-size: 8px;
-  color: #667b83;
-  letter-spacing: 1.7px;
-}
-.sidebar-note p {
-  font-family: Georgia, serif;
-  line-height: 1.6;
-  color: #c9d2da;
-  font-size: 17px;
-  margin: 14px 0;
-}
-.accent-rule {
-  display: block;
-  width: 30px;
-  height: 2px;
-  background: var(--accent);
-}
 .profile {
   display: flex;
   align-items: center;
@@ -330,16 +294,6 @@ textarea:focus-visible {
   color: #8c9bad;
   margin-top: 3px;
 }
-.welcome-note {
-  padding: 6px 8px 0 0;
-  color: #b4bfcd;
-}
-.welcome-note p {
-  font-family: Georgia, serif;
-  font-size: 16px;
-  line-height: 1.45;
-  margin-bottom: 13px;
-}
 .dashboard-overview,
 .dashboard-main-grid {
   display: grid;
@@ -472,6 +426,7 @@ textarea:focus-visible {
   line-height: 1.6;
 }
 .focus-tags {
+  margin-top: 14px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -481,21 +436,6 @@ textarea:focus-visible {
 .focus-due {
   font-size: 10px;
   color: #83929f;
-}
-.focus-footer {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px solid #ffffff05;
-  font-size: 8px;
-  color: #617b80;
-  letter-spacing: 0.3px;
-}
-.focus-footer .connection-dot {
-  width: 4px;
-  height: 4px;
 }
 .focus-unavailable {
   padding: 25px 0;
@@ -588,49 +528,6 @@ textarea:focus-visible {
   color: #8398a6;
   font-size: 9px;
 }
-.intention-card {
-  position: relative;
-  overflow: hidden;
-  padding: 22px 25px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  background:
-    radial-gradient(ellipse at 100% 100%, #04484755, transparent 78%), #0b1419;
-}
-.intention-card p {
-  font-size: 24px;
-  font-weight: 500;
-  letter-spacing: -0.5px;
-  line-height: 1.4;
-  margin: 20px 0 14px;
-  z-index: 1;
-}
-.intention-card .tiny-label {
-  color: #5d8589;
-  font-size: 8px;
-}
-.intention-lines {
-  position: absolute;
-  inset: auto -10px -35px auto;
-  transform: rotate(-25deg);
-}
-.intention-lines span {
-  display: block;
-  width: 145px;
-  height: 20px;
-  border-top: 1px solid #00ffd410;
-  border-radius: 50%;
-}
-.intention-small {
-  min-height: 110px;
-}
-.intention-small p {
-  font-family: Georgia, serif;
-  font-size: 19px;
-  font-weight: 400;
-  margin: 0 0 15px;
-}
 .dashboard-rail {
   display: grid;
   gap: 16px;
@@ -663,17 +560,6 @@ textarea:focus-visible {
   background: #00ffd40a;
   transform: translateY(-1px);
 }
-.calendar-connection {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 7px;
-  margin: 0 20px 13px;
-  padding-bottom: 13px;
-  border-bottom: 1px solid var(--border);
-  font-size: 9px;
-  color: #8295a2;
-}
 .connection-dot {
   display: inline-block;
   width: 5px;
@@ -685,13 +571,6 @@ textarea:focus-visible {
 .connection-dot.connected {
   background: #02d9b6;
   box-shadow: 0 0 6px #00ffd41a;
-}
-.connection-state {
-  color: #617582;
-}
-.calendar-connection .text-button {
-  margin-left: auto;
-  font-size: 9px;
 }
 .timeline {
   padding: 3px 18px 4px;
@@ -1305,9 +1184,6 @@ textarea:focus-visible {
   align-items: center;
   gap: 7px;
 }
-.footer-version {
-  color: #354a55;
-}
 .icon-button {
   color: #b6c8d4;
   display: grid;
@@ -1343,6 +1219,105 @@ textarea:focus-visible {
     background-position: -200% 0;
   }
 }
+
+.sidebar-calendar {
+  padding: 14px 13px;
+  border: 1px solid #22343d;
+  border-radius: 8px;
+  background: #101a20;
+  min-width: 0;
+}
+.calendar-summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #94aabb;
+}
+.calendar-summary > svg {
+  flex-shrink: 0;
+}
+.calendar-copy {
+  min-width: 0;
+}
+.calendar-copy h2 {
+  font-size: 11px;
+  font-weight: 500;
+  color: #c5d3de;
+}
+.calendar-copy p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  margin-top: 4px;
+  color: #8198a8;
+}
+.calendar-action {
+  width: 100%;
+  margin-top: 12px;
+  min-height: 29px;
+}
+.calendar-has-error .calendar-action {
+  border-color: #d78b9c66;
+  color: #e5a1b0;
+}
+.calendar-message {
+  font-size: 10px;
+  line-height: 1.6;
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+}
+.next-event-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 22px 24px;
+  min-height: 190px;
+}
+.next-event-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #8fa6b6;
+}
+.next-event-countdown {
+  color: #4ddbc3;
+  font-size: 11px;
+  margin-top: 16px;
+}
+.next-event-panel h3 {
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-top: 9px;
+  overflow-wrap: anywhere;
+}
+.next-event-time {
+  color: #b1c3d1;
+  font-size: 12px;
+  margin-top: 7px;
+  font-variant-numeric: tabular-nums;
+}
+.next-event-location {
+  font-size: 10px;
+  color: #8da1b0;
+  line-height: 1.6;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+.next-event-panel .source-label {
+  margin-top: 5px;
+}
+.next-event-state {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #98aebd;
+  padding: 21px 0;
+}
+.next-event-link {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
 @media (min-width: 1700px) {
   .dashboard-content {
     padding-top: 36px;
@@ -1352,7 +1327,7 @@ textarea:focus-visible {
   }
   .focus-panel,
   .workload-panel,
-  .intention-card:not(.intention-small) {
+  .next-event-panel {
     min-height: 216px;
   }
   .task-content {
@@ -1365,6 +1340,10 @@ textarea:focus-visible {
   }
 }
 @media (max-width: 1350px) {
+  .next-event-panel {
+    grid-column: 1 / -1;
+    min-height: 150px;
+  }
   .sidebar {
     width: 194px;
   }
@@ -1385,12 +1364,9 @@ textarea:focus-visible {
   .dashboard-main-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
-  .dashboard-overview > .intention-card {
-    display: none;
-  }
   .dashboard-rail {
     grid-column: 1 / -1;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 1fr;
   }
   .quick-grid {
     grid-template-columns: repeat(4, 1fr);
@@ -1401,15 +1377,33 @@ textarea:focus-visible {
   .project-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .welcome-note p {
-    font-size: 14px;
-  }
   .task-list {
     padding-left: 15px;
     padding-right: 15px;
   }
 }
 @media (max-width: 1050px) {
+  .sidebar-calendar {
+    padding: 10px 0;
+    background: transparent;
+    border-color: transparent;
+  }
+  .calendar-summary {
+    justify-content: center;
+  }
+  .calendar-copy,
+  .calendar-action > span {
+    display: none;
+  }
+  .calendar-message {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
   .sidebar {
     width: 76px;
     padding: 24px 12px;
@@ -1423,7 +1417,6 @@ textarea:focus-visible {
   .brand > span:last-child,
   .nav-caption,
   .nav-item > span,
-  .sidebar-note,
   .profile div,
   .profile > .connection-dot {
     display: none;
@@ -1442,9 +1435,6 @@ textarea:focus-visible {
   .dashboard-content {
     padding-left: 22px;
     padding-right: 22px;
-  }
-  .welcome-note {
-    display: none;
   }
   .workload-panel {
     padding: 22px 18px;
@@ -1468,7 +1458,7 @@ textarea:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
   .dashboard-rail {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: 1fr;
   }
   .quick-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -1522,10 +1512,30 @@ textarea:focus-visible {
   .sidebar-open .brand > span:last-child,
   .sidebar-open .nav-caption,
   .sidebar-open .nav-item > span,
-  .sidebar-open .sidebar-note,
   .sidebar-open .profile div,
   .sidebar-open .profile > .connection-dot {
     display: block;
+  }
+  .sidebar-open .sidebar-calendar {
+    padding: 14px 13px;
+    border-color: #22343d;
+    background: #101a20;
+  }
+  .sidebar-open .calendar-summary {
+    justify-content: flex-start;
+  }
+  .sidebar-open .calendar-copy {
+    display: block;
+  }
+  .sidebar-open .calendar-action > span {
+    display: inline;
+  }
+  .sidebar-open .calendar-message {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
   }
   .sidebar-open nav {
     margin-top: 0;
@@ -1535,6 +1545,9 @@ textarea:focus-visible {
   }
   .sidebar-open .profile {
     justify-content: start;
+  }
+  .sidebar-open .profile div {
+    display: grid;
   }
   .sidebar-scrim {
     display: block;
@@ -1595,9 +1608,6 @@ textarea:focus-visible {
   .dashboard-rail {
     grid-template-columns: 1fr;
     gap: 13px;
-  }
-  .dashboard-rail .intention-small {
-    display: none;
   }
   .quick-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1677,10 +1687,6 @@ textarea:focus-visible {
   .event-duration {
     margin-left: auto;
   }
-  .calendar-connection {
-    margin-left: 15px;
-    margin-right: 15px;
-  }
   .form-surface {
     padding-left: 15px;
     padding-right: 15px;
@@ -1688,11 +1694,6 @@ textarea:focus-visible {
   .workspace-footer {
     padding: 8px 17px 20px;
     font-size: 7px;
-  }
-  .workspace-footer > span:last-child {
-    max-width: 140px;
-    text-align: right;
-    line-height: 1.6;
   }
   .connection-banner {
     align-items: start;

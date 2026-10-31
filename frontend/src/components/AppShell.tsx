@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Icon, type IconName } from './dashboard/ui'
+import { displayName, profileInitial } from '../config/profile'
 
 const navigation: { id: string; title: string; icon: IconName }[] = [
   { id: 'today', title: 'Today', icon: 'home' },
@@ -13,11 +14,13 @@ export function AppShell({
   now,
   search,
   onSearch,
+  calendarControl,
 }: {
   children: ReactNode
   now: Date
   search: string
   onSearch: (value: string) => void
+  calendarControl: ReactNode
 }) {
   const [active, setActive] = useState(
     () => window.location.hash.slice(1) || 'today'
@@ -94,19 +97,11 @@ export function AppShell({
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <span className="tiny-label">A LITTLE REMINDER</span>
-            <p>
-              Make space
-              <br />
-              for what matters.
-            </p>
-            <span className="accent-rule" />
-          </div>
+          {calendarControl}
           <div className="profile">
-            <span className="avatar">D</span>
+            <span className="avatar">{profileInitial}</span>
             <div>
-              <strong>Dylan</strong>
+              <strong>{displayName || 'Your workspace'}</strong>
               <span>Personal workspace</span>
             </div>
             <span className="connection-dot connected" />
@@ -161,11 +156,7 @@ export function AppShell({
           {children}
         </main>
         <footer className="workspace-footer">
-          <span>
-            <span className="connection-dot connected" />
-            PERSONAL HUB <span className="footer-version">/ V2</span>
-          </span>
-          <span>A little more intention. A little less noise.</span>
+          <span>Personal Hub</span>
         </footer>
       </div>
     </div>

@@ -1,6 +1,8 @@
 import type { Today } from '../../types/today'
+import type { ScheduleEvent } from '../../types/event'
 import { Icon, PanelHeading, SectionState } from './ui'
-import { priorityTasks } from './utils'
+import { eventClock, formatDuration, priorityTasks } from './utils'
+import { displayName } from '../../config/profile'
 
 type OpenAction = (kind: 'task' | 'project' | 'event', id?: number) => void
 
@@ -16,17 +18,10 @@ export function Welcome({ now }: { now: Date }) {
       <div>
         <p className="eyebrow">{greeting}</p>
         <h1>
-          Hello Dylan<span>,</span>
+          {displayName ? `Hello ${displayName}` : 'Hello'}
+          {displayName && <span>,</span>}
         </h1>
         <p className="welcome-subtitle">Here’s your day at a glance.</p>
-      </div>
-      <div className="welcome-note">
-        <p>
-          A more intentional today
-          <br />
-          builds a better tomorrow.
-        </p>
-        <span className="accent-rule" />
       </div>
     </section>
   )
@@ -77,9 +72,6 @@ export function DailyFocus({
               <Icon name="arrow" size={21} />
             </button>
           </div>
-          <p className="focus-description">
-            One clear next step. Give it your attention.
-          </p>
           <div className="focus-tags">
             <span className="category-tag">{task.category}</span>
             <span
@@ -95,7 +87,7 @@ export function DailyFocus({
       ) : (
         <>
           <div className="focus-title-row">
-            <h2>Choose your next meaningful step.</h2>
+            <h2>No priority task</h2>
             <button
               className="focus-open"
               aria-label="Add a focus task"
@@ -105,17 +97,13 @@ export function DailyFocus({
             </button>
           </div>
           <p className="focus-description">
-            A clear day starts with a little intention.
+            Add a task due today or mark one as high priority.
           </p>
           <button className="text-button accent" onClick={() => onOpen('task')}>
-            Add your first priority <Icon name="arrow" size={14} />
+            Add a task <Icon name="arrow" size={14} />
           </button>
         </>
       )}
-      <div className="focus-footer">
-        <span className="connection-dot connected" />
-        {task ? 'Your next meaningful step' : 'Room for what matters'}
-      </div>
     </section>
   )
 }
@@ -146,7 +134,7 @@ export function Workload({
   return (
     <section className="panel workload-panel" aria-busy={loading}>
       <p className="tiny-label">
-        YOUR MOMENTUM <span>LIVE SNAPSHOT</span>
+        CURRENT WORKLOAD <span>LIVE SNAPSHOT</span>
       </p>
       {loading ? (
         <SectionState loading error={null} empty={false}>
@@ -239,29 +227,75 @@ export function QuickActions({ onOpen }: { onOpen: OpenAction }) {
   )
 }
 
-export function IntentionCard({ small = false }: { small?: boolean }) {
+export function NextEvent({
+  events,
+  now,
+  loading,
+  error,
+}: {
+  events: ScheduleEvent[]
+  now: Date
+  loading: boolean
+  error: string | null
+}) {
+  const nextEvent = events
+    .filter(
+      (event) =>
+        !event.isAllDay && new Date(event.startTime).getTime() > now.getTime()
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+    )[0]
+  const minutesUntilStart = nextEvent
+    ? Math.max(
+        1,
+        Math.ceil(
+          (new Date(nextEvent.startTime).getTime() - now.getTime()) / 60_000
+        )
+      )
+    : 0
+
   return (
-    <aside className={`panel intention-card ${small ? 'intention-small' : ''}`}>
-      {!small && <span className="tiny-label">THE LONG GAME</span>}
-      <p>
-        {small ? (
-          'Progress, not perfection.'
-        ) : (
-          <>
-            Small steps
-            <br />
-            compound.
-          </>
-        )}
-      </p>
-      <span className="accent-rule" />
-      {!small && (
-        <div className="intention-lines" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
+    <aside className="panel next-event-panel" aria-busy={loading}>
+      <div className="next-event-heading">
+        <Icon name="clock" size={15} />
+        <h2 className="tiny-label">UP NEXT</h2>
+      </div>
+      {loading ? (
+        <p role="status" className="next-event-state">
+          Loading schedule…
+        </p>
+      ) : error ? (
+        <p className="next-event-state">Schedule unavailable.</p>
+      ) : nextEvent ? (
+        <>
+          <p className="next-event-countdown">
+            Starts in {formatDuration(minutesUntilStart)}
+          </p>
+          <h3>{nextEvent.title}</h3>
+          <p className="next-event-time">
+            <time dateTime={nextEvent.startTime}>
+              {eventClock(nextEvent, 'start')}
+            </time>
+            –
+            <time dateTime={nextEvent.endTime}>
+              {eventClock(nextEvent, 'end')}
+            </time>
+          </p>
+          {nextEvent.location && (
+            <p className="next-event-location">{nextEvent.location}</p>
+          )}
+          <span className="source-label">
+            {nextEvent.source === 'google' ? 'Google Calendar' : 'Personal Hub'}
+          </span>
+        </>
+      ) : (
+        <p className="next-event-state">No more timed events today.</p>
       )}
+      <a href="#schedule" className="text-button next-event-link">
+        View schedule <Icon name="arrow" size={13} />
+      </a>
     </aside>
   )
 }
